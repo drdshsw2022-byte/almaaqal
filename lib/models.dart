@@ -18,7 +18,34 @@ String? asStrOrNull(dynamic v) {
 List<String> asStrList(dynamic v) =>
     v is List ? v.map((e) => '$e').toList() : <String>[];
 
-enum Role { admin, doctor, student }
+/// الصفات بالتسلسل الهرمي.
+/// admin: مدير النظام • president: الإدارة العليا (رئيس الجامعة/مجلس الأمناء)
+/// dean: عميد كلية • head: رئيس قسم • doctor: تدريسي • student: طالب
+enum Role { admin, president, dean, head, doctor, student }
+
+const staffRoles = ['president', 'dean', 'head', 'doctor', 'admin'];
+
+const roleNames = {
+  'admin': 'مدير النظام',
+  'president': 'الإدارة العليا',
+  'dean': 'عميد كلية',
+  'head': 'رئيس قسم',
+  'doctor': 'تدريسي',
+  'student': 'طالب',
+};
+String roleName(String r) => roleNames[r] ?? r;
+
+Role roleFrom(String r) => switch (r) {
+      'admin' => Role.admin,
+      'president' => Role.president,
+      'dean' => Role.dean,
+      'head' => Role.head,
+      _ => Role.doctor,
+    };
+
+/// الإدارة (تدخل من تبويب الإدارة).
+bool isManagement(Role r) =>
+    r == Role.admin || r == Role.president || r == Role.dean || r == Role.head;
 
 const stageNames = {
   1: 'المرحلة الأولى',
@@ -66,6 +93,8 @@ class Course {
   final String nameAr;
   final String nameEn;
   final int ects;
+  final int credits; // الساعات المعتمدة
+  final List<String> prereqs; // رموز المتطلبات السابقة
 
   Course({
     required this.id,
@@ -77,6 +106,8 @@ class Course {
     required this.nameAr,
     required this.nameEn,
     required this.ects,
+    this.credits = 0,
+    this.prereqs = const [],
   });
 
   static String makeId(String deptId, int semester, String code) =>
@@ -92,6 +123,8 @@ class Course {
         'nameAr': nameAr,
         'nameEn': nameEn,
         'ects': ects,
+        'credits': credits,
+        'prereqs': prereqs,
       };
 
   factory Course.fromMap(Map<String, dynamic> m) {
@@ -106,6 +139,8 @@ class Course {
       nameAr: '${m['nameAr'] ?? ''}',
       nameEn: '${m['nameEn'] ?? ''}',
       ects: asInt(m['ects']),
+      credits: asInt(m['credits']),
+      prereqs: asStrList(m['prereqs']),
     );
   }
 }
@@ -175,24 +210,28 @@ class Student {
 class Staff {
   final String id; // البريد الجامعي
   final String name;
-  final String role; // admin | doctor
-  final String? deptId;
+  final String role; // admin | president | dean | head | doctor
+  final String? collegeId; // للعميد
+  final String? deptId; // لرئيس القسم والتدريسي
   final List<String> courseIds;
 
   Staff({
     required String id,
     required this.name,
     required this.role,
+    this.collegeId,
     this.deptId,
     this.courseIds = const [],
   }) : id = id.trim().toLowerCase();
 
   bool get isAdmin => role == 'admin';
+  Role get roleEnum => roleFrom(role);
   String get email => id;
 
   Staff copyWith({
     String? name,
     String? role,
+    String? collegeId,
     String? deptId,
     List<String>? courseIds,
   }) =>
@@ -200,6 +239,7 @@ class Staff {
         id: id,
         name: name ?? this.name,
         role: role ?? this.role,
+        collegeId: collegeId ?? this.collegeId,
         deptId: deptId ?? this.deptId,
         courseIds: courseIds ?? this.courseIds,
       );
@@ -209,6 +249,7 @@ class Staff {
         'email': id,
         'name': name,
         'role': role,
+        'collegeId': collegeId,
         'deptId': deptId,
         'courseIds': courseIds,
       };
@@ -217,6 +258,7 @@ class Staff {
         id: '${m['id'] ?? m['email']}',
         name: '${m['name'] ?? ''}',
         role: '${m['role'] ?? 'doctor'}',
+        collegeId: asStrOrNull(m['collegeId']),
         deptId: asStrOrNull(m['deptId']),
         courseIds: asStrList(m['courseIds']),
       );
@@ -231,7 +273,7 @@ class AppUser {
         student = s,
         staff = null;
   AppUser.staff(Staff s)
-      : role = s.isAdmin ? Role.admin : Role.doctor,
+      : role = s.roleEnum,
         staff = s,
         student = null;
 

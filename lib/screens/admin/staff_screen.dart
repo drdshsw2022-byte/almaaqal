@@ -18,7 +18,20 @@ class StaffScreen extends StatefulWidget {
 class _StaffScreenState extends State<StaffScreen> {
   List<Staff> _staff = [];
   List<Department> _depts = [];
+  List<College> _colleges = [];
   Map<String, Course> _courses = {};
+
+  /// الصفات التي يحق للمستخدم الحالي إضافتها/تعديلها.
+  List<String> get _allowedRoles {
+    final me = AppState.user.value?.staff?.roleEnum;
+    return switch (me) {
+      Role.admin => staffRoles,
+      Role.president => ['president', 'dean', 'head', 'doctor'],
+      Role.dean => ['head', 'doctor'],
+      Role.head => ['doctor'],
+      _ => const <String>[],
+    };
+  }
   bool _loading = true;
 
   @override
@@ -29,13 +42,27 @@ class _StaffScreenState extends State<StaffScreen> {
 
   Future<void> _load() async {
     try {
-      final r = await Future.wait(
-          [repo.staff(), repo.departments(), repo.courses()]);
-      _staff = List<Staff>.from(r[0] as List<Staff>)
+      final r = await Future.wait([
+        repo.staff(),
+        repo.departments(),
+        repo.courses(),
+        repo.colleges()
+      ]);
+      final scope = AppState.scope;
+      _colleges = (r[3] as List<College>)
+          .where((c) => scope.hasCollege(c.id))
+          .toList();
+      _staff = (r[0] as List<Staff>)
+          .where((x) =>
+              scope.isAll ||
+              scope.hasDept(x.deptId) ||
+              (x.role == 'dean' && x.collegeId != null && scope.hasCollege(x.collegeId) &&
+                  AppState.user.value?.staff?.roleEnum == Role.dean))
+          .toList()
         ..sort((a, b) => a.role != b.role
-            ? a.role.compareTo(b.role)
+            ? staffRoles.indexOf(a.role).compareTo(staffRoles.indexOf(b.role))
             : a.name.compareTo(b.name));
-      _depts = r[1] as List<Department>;
+      _depts = scope.filterDepts(r[1] as List<Department>);
       _courses = {for (final c in r[2] as List<Course>) c.id: c};
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
@@ -47,7 +74,12 @@ class _StaffScreenState extends State<StaffScreen> {
     final email = TextEditingController(text: s?.email);
     final name = TextEditingController(text: s?.name);
     String role = s?.role ?? 'doctor';
-    String? dept = s?.deptId;
+    final sc = AppState.scope.deptIds;
+    String? dept =
+        s?.deptId ?? ((sc != null && sc.length == 1) ? sc.first : null);
+    String? college = s?.collegeId ??
+        (_colleges.length == 1 ? _colleges.first.id : null);
+    final canEdit = s == null || _allowedRoles.contains(s.role);
     List<String> courseIds = [...?s?.courseIds];
 
     final ok = await showDialog<bool>(
@@ -59,19 +91,17 @@ class _StaffScreenState extends State<StaffScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(
-                        value: 'doctor',
-                        label: Text('دكتور'),
-                        icon: Icon(Icons.co_present)),
-                    ButtonSegment(
-                        value: 'admin',
-                        label: Text('مدير'),
-                        icon: Icon(Icons.admin_panel_settings)),
-                  ],
-                  selected: {role},
-                  onSelectionChanged: (v) => setD(() => role = v.first),
+                DropdownButtonFormField<String>(
+                  value: role,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'الصفة'),
+                  items: {..._allowedRoles, role}
+                      .map((r) => DropdownMenuItem(
+                          value: r,
+                          enabled: _allowedRoles.contains(r),
+                          child: Text(roleName(r))))
+                      .toList(),
+                  onChanged: (v) => setD(() => role = v ?? role),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -88,8 +118,21 @@ class _StaffScreenState extends State<StaffScreen> {
                         labelText: 'البريد الجامعي (للدخول)',
                         hintText: 'name@${AppConfig.universityDomain}')),
                 const SizedBox(height: 10),
+                if (role == 'dean') ...[
+                  DropdownButtonFormField<String?>(
+                    value: _colleges.any((c) => c.id == college) ? college : null,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'الكلية'),
+                    items: _colleges
+                        .map((c) => DropdownMenuItem<String?>(
+                            value: c.id, child: Text(c.name)))
+                        .toList(),
+                    onChanged: (v) => setD(() => college = v),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 DropdownButtonFormField<String?>(
-                  value: dept,
+                  value: _depts.any((d) => d.id == dept) ? dept : null,
                   isExpanded: true,
                   decoration: const InputDecoration(labelText: 'القسم'),
                   items: [
@@ -100,7 +143,7 @@ class _StaffScreenState extends State<StaffScreen> {
                   ],
                   onChanged: (v) => setD(() => dept = v),
                 ),
-                if (role == 'doctor') ...[
+                if (role == 'doctor' || role == 'head' || role == 'dean') ...[
                   const SizedBox(height: 10),
                   OutlinedButton.icon(
                     onPressed: () async {
@@ -128,13 +171,28 @@ class _StaffScreenState extends State<StaffScreen> {
                 onPressed: () => Navigator.pop(ctx, false),
                 child: const Text('إلغاء')),
             FilledButton(
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('حفظ')),
+                onPressed: canEdit ? () => Navigator.pop(ctx, true) : null,
+                child: Text(canEdit ? 'حفظ' : 'لا تملك صلاحية التعديل')),
           ],
         ),
       ),
     );
     if (ok != true || !mounted) return;
+    if (!_allowedRoles.contains(role)) {
+      showSnack(context, 'لا تملك صلاحية تعيين صفة "${roleName(role)}"',
+          error: true);
+      return;
+    }
+    if (role == 'dean' && college == null) {
+      showSnack(context, 'حدد كلية العميد', error: true);
+      return;
+    }
+    if ((role == 'head' || role == 'doctor') &&
+        !AppState.scope.isAll &&
+        !AppState.scope.hasDept(dept)) {
+      showSnack(context, 'حدد قسماً ضمن نطاقك', error: true);
+      return;
+    }
     final e = email.text.trim().toLowerCase();
     if (e.isEmpty || name.text.trim().isEmpty) {
       showSnack(context, 'أدخل الاسم والبريد الجامعي', error: true);
@@ -154,8 +212,11 @@ class _StaffScreenState extends State<StaffScreen> {
       id: e,
       name: name.text.trim(),
       role: role,
+      collegeId: role == 'dean' ? college : null,
       deptId: dept,
-      courseIds: role == 'doctor' ? courseIds : const [],
+      courseIds: (role == 'doctor' || role == 'head' || role == 'dean')
+          ? courseIds
+          : const [],
     );
     await runBusy(context, () => repo.saveStaff(staff), success: 'تم الحفظ');
     _load();
@@ -164,6 +225,10 @@ class _StaffScreenState extends State<StaffScreen> {
   Future<void> _delete(Staff s) async {
     if (s.id == AppState.user.value?.staff?.id) {
       showSnack(context, 'لا يمكنك حذف حسابك', error: true);
+      return;
+    }
+    if (!_allowedRoles.contains(s.role)) {
+      showSnack(context, 'لا تملك صلاحية حذف "${roleName(s.role)}"', error: true);
       return;
     }
     final ok = await confirmDialog(context, 'حذف', 'حذف "${s.name}"؟',
@@ -195,7 +260,13 @@ class _StaffScreenState extends State<StaffScreen> {
   }
 
   Widget _tile(Staff s) {
-    final g = s.isAdmin ? AppColors.tilePalette[4] : AppColors.tilePalette[1];
+    final g = switch (s.role) {
+      'president' => AppColors.goldGradient,
+      'dean' => AppColors.tilePalette[5],
+      'head' => AppColors.tilePalette[2],
+      'admin' => AppColors.tilePalette[4],
+      _ => AppColors.tilePalette[1],
+    };
     final names = s.courseIds
         .map((id) => _courses[id]?.nameAr)
         .whereType<String>()
@@ -213,16 +284,23 @@ class _StaffScreenState extends State<StaffScreen> {
           height: 48,
           decoration:
               BoxDecoration(gradient: g, borderRadius: BorderRadius.circular(16)),
-          child: Icon(s.isAdmin ? Icons.admin_panel_settings : Icons.co_present,
+          child: Icon(
+              switch (s.role) {
+                'president' => Icons.account_balance_rounded,
+                'dean' => Icons.domain_rounded,
+                'head' => Icons.apartment_rounded,
+                'admin' => Icons.admin_panel_settings,
+                _ => Icons.co_present,
+              },
               color: Colors.white),
         ),
         title: Text(s.name, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${s.isAdmin ? 'مدير' : 'دكتور'} • ${s.email}',
+            Text('${roleName(s.role)} • ${s.email}',
                 style: const TextStyle(fontSize: 12)),
-            if (!s.isAdmin)
+            if (s.role == 'doctor' || s.courseIds.isNotEmpty)
               Text(
                   s.courseIds.isEmpty
                       ? 'لا توجد مواد مسندة'

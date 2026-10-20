@@ -412,6 +412,43 @@ class FirebaseRepo implements Repo {
   }
 
   @override
+  Future<List<LectureSession>> sessionsSince(int ms) async =>
+      _sorted(await _sessions.where('startedAt', isGreaterThanOrEqualTo: ms).get());
+
+  @override
+  Future<List<AttendanceRecord>> attendanceSince(int ms) async {
+    final q = await _attendance.where('time', isGreaterThanOrEqualTo: ms).get();
+    return q.docs.map((d) => AttendanceRecord.fromMap(d.data())).toList();
+  }
+
+  Future<void> _bulk(String col, List<Map<String, dynamic>> items) async {
+    const chunk = 400;
+    for (var i = 0; i < items.length; i += chunk) {
+      final b = _db.batch();
+      for (final m in items.skip(i).take(chunk)) {
+        b.set(_db.collection(col).doc('${m['id']}'), m, SetOptions(merge: true));
+      }
+      await b.commit();
+    }
+  }
+
+  @override
+  Future<void> saveStudentsBulk(List<Student> list) async {
+    await _bulk('students', list.map((s) => s.toMap()).toList());
+    _studentsCache = null;
+  }
+
+  @override
+  Future<void> saveCoursesBulk(List<Course> list) async {
+    await _bulk('courses', list.map((c) => c.toMap()).toList());
+    _coursesCache = null;
+  }
+
+  @override
+  Future<void> saveStaffBulk(List<Staff> list) =>
+      _bulk('staff', list.map((s) => s.toMap()).toList());
+
+  @override
   Future<void> markAttendance(AttendanceRecord r) async {
     final ref = _attendance.doc(r.id);
     final exists = (await ref.get()).exists;

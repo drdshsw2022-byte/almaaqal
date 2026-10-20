@@ -87,8 +87,12 @@ class _BootScreenState extends State<BootScreen> {
         Future.delayed(const Duration(milliseconds: 1200)),
       ]);
       final user = results.first as AppUser?;
-      if (user != null) await AppState.refreshSettings();
-      AppState.user.value = user;
+      await AppState.loadPortal();
+      if (user != null) {
+        await AppState.afterLogin(user);
+      } else {
+        AppState.user.value = null;
+      }
       if (mounted) setState(() => _ready = true);
     } catch (e) {
       if (mounted) setState(() => _error = friendlyError(e));
@@ -102,11 +106,14 @@ class _BootScreenState extends State<BootScreen> {
         valueListenable: AppState.user,
         builder: (context, user, _) {
           if (user == null) return const LoginScreen();
-          return switch (user.role) {
-            Role.admin => const AdminHome(),
-            Role.doctor => const DoctorHome(),
-            Role.student => const StudentHome(),
-          };
+          if (user.role == Role.student) return const StudentHome();
+          if (user.role == Role.doctor) return const DoctorHome();
+          // رئيس القسم/العميد الداخل من تبويب التدريسي يرى لوحة المحاضرات
+          if (AppState.portal == Portal.teacher &&
+              (user.role == Role.head || user.role == Role.dean)) {
+            return const DoctorHome();
+          }
+          return const AdminHome();
         },
       );
     }

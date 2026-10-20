@@ -1,9 +1,10 @@
 rules_version = '2';
 
-// قواعد حماية قاعدة بيانات نظام الحضور - جامعة المعقل الأهلية
+// قواعد حماية قاعدة بيانات نظام جامعة المعقل الأهلية (تسلسل هرمي للصلاحيات RBAC)
 // انسخ هذا الملف إلى: Firebase Console > Firestore Database > Rules ثم اضغط Publish
 //
 // الهوية = البريد الجامعي الموثّق من Google.
+// الصفات: admin (مدير النظام) > president (الإدارة العليا) > dean (عميد) > head (رئيس قسم) > doctor (تدريسي)
 // الكادر: staff/<البريد>  •  الطلاب: students/<الرقم المعرفي>
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,56 +26,92 @@ service cloud.firestore {
     function isStaff() {
       return isMember() && exists(/databases/$(database)/documents/staff/$(email()));
     }
+    function me() { return get(/databases/$(database)/documents/staff/$(email())).data; }
+    function myRole() { return isStaff() ? me().role : ''; }
 
-    function isAdmin() {
-      return isSuperAdmin() ||
-        (isStaff() && get(/databases/$(database)/documents/staff/$(email())).data.role == 'admin');
+    // الإدارة العليا ومدير النظام: كل الجامعة
+    function isTop() { return isSuperAdmin() || myRole() in ['admin', 'president']; }
+
+    function deptCollege(deptId) {
+      return get(/databases/$(database)/documents/departments/$(deptId)).data.collegeId;
+    }
+
+    // هل يدير المستخدم هذا القسم؟ (رئيس القسم لقسمه، العميد لأقسام كليته)
+    function managesDept(deptId) {
+      return isTop() || (deptId is string && (
+        (myRole() == 'head' && me().deptId == deptId) ||
+        (myRole() == 'dean' &&
+          exists(/databases/$(database)/documents/departments/$(deptId)) &&
+          deptCollege(deptId) == me().collegeId)));
     }
 
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    // البيانات العامة: قراءة لكل منتسب، كتابة للمدير
-    match /colleges/{id}    { allow read: if isMember(); allow write: if isAdmin(); }
-    match /departments/{id} { allow read: if isMember(); allow write: if isAdmin(); }
-    match /courses/{id}     { allow read: if isMember(); allow write: if isAdmin(); }
-    match /settings/{id}    { allow read: if isMember(); allow write: if isAdmin(); }
-    match /meta/{id}        { allow read: if isMember(); allow write: if isAdmin(); }
+    // الهيكل والإعدادات: قراءة لكل منتسب، كتابة للإدارة العليا
+    match /colleges/{id}    { allow read: if isMember(); allow write: if isTop(); }
+    match /departments/{id} { allow read: if isMember(); allow write: if isTop(); }
+    match /settings/{id}    { allow read: if isMember(); allow write: if isTop(); }
+    match /meta/{id}        { allow read: if isMember(); allow write: if isTop(); }
+
+    // المواد: رئيس القسم لقسمه، العميد لكليته، الإدارة العليا للجميع
+    match /courses/{id} {
+      allow read: if isMember();
+      allow create, update: if managesDept(request.resource.data.deptId);
+      allow delete: if managesDept(resource.data.deptId);
+    }
 
     match /students/{id} {
       allow read: if isMember();
-      allow create, delete: if isAdmin();
-      // الدكتور يستطيع ربط بطاقة NFC بطالب أثناء المحاضرة
-      allow update: if isAdmin() || (isStaff() && onlyChanges(['nfcUid']));
+      allow create: if managesDept(request.resource.data.deptId);
+      allow update: if managesDept(request.resource.data.deptId) ||
+        // أي تدريسي يستطيع ربط بطاقة NFC بطالب أثناء المحاضرة
+        (isStaff() && onlyChanges(['nfcUid']));
+      allow delete: if managesDept(resource.data.deptId);
+    }
+
+    // من يضيف من: مدير النظام الجميع، الرئاسة الجميع عدا مدير النظام،
+    // العميد رؤساء الأقسام والتدريسيين في كليته، رئيس القسم التدريسيين في قسمه
+    function canAssign(data) {
+      return isSuperAdmin() || myRole() == 'admin' ||
+        (myRole() == 'president' && data.role != 'admin') ||
+        (myRole() == 'dean' && data.role in ['head', 'doctor'] && managesDept(data.deptId)) ||
+        (myRole() == 'head' && data.role == 'doctor' && managesDept(data.deptId));
     }
 
     match /staff/{staffEmail} {
       allow read: if isMember();
-      allow create: if isAdmin() || (staffEmail == email() && isSuperAdmin());
-      allow delete: if isAdmin();
-      // الدكتور يعدّل قائمة مواده فقط
-      allow update: if isAdmin() || (staffEmail == email() && onlyChanges(['courseIds']));
+      allow create: if canAssign(request.resource.data) ||
+        (staffEmail == email() && isSuperAdmin());
+      allow update: if (canAssign(resource.data) && canAssign(request.resource.data)) ||
+        // التدريسي يعدّل قائمة مواده فقط
+        (staffEmail == email() && onlyChanges(['courseIds']));
+      allow delete: if canAssign(resource.data);
     }
 
     match /sessions/{id} {
       allow read: if isMember();
       allow create: if isStaff() && request.resource.data.doctorId == email();
-      allow update, delete: if isAdmin() || (isStaff() && resource.data.doctorId == email());
+      allow update, delete: if resource.data.doctorId == email() ||
+        managesDept(resource.data.deptId);
     }
 
-    function isSessionOwner(sessionId) {
-      return isStaff() &&
-        get(/databases/$(database)/documents/sessions/$(sessionId)).data.doctorId == email();
+    function sessionData(sessionId) {
+      return get(/databases/$(database)/documents/sessions/$(sessionId)).data;
+    }
+    function canTakeAttendance(sessionId) {
+      return isStaff() && (sessionData(sessionId).doctorId == email() ||
+        managesDept(sessionData(sessionId).deptId));
     }
 
     match /attendance/{id} {
       allow read: if isMember();
-      // يسجّل الحضور الدكتور صاحب المحاضرة أو المدير فقط (بمسح هوية الطالب أو NFC)
-      allow create: if (isAdmin() || isSessionOwner(request.resource.data.sessionId)) &&
+      // يسجّل الحضور صاحب المحاضرة أو من يدير قسمها (بمسح الهوية أو NFC)
+      allow create: if canTakeAttendance(request.resource.data.sessionId) &&
         id == request.resource.data.sessionId + '_' + request.resource.data.studentId;
       allow update: if false;
-      allow delete: if isAdmin() || isSessionOwner(resource.data.sessionId);
+      allow delete: if canTakeAttendance(resource.data.sessionId);
     }
   }
 }

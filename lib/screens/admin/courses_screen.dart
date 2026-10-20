@@ -34,11 +34,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
   Future<void> _load() async {
     try {
       final r = await Future.wait([repo.courses(), repo.departments()]);
-      _all = List<Course>.from(r[0] as List<Course>)
+      _all = (r[0] as List<Course>)
+          .where((c) => AppState.scope.hasDept(c.deptId))
+          .toList()
         ..sort((a, b) => a.semester != b.semester
             ? a.semester.compareTo(b.semester)
             : a.code.compareTo(b.code));
-      _depts = r[1] as List<Department>;
+      _depts = AppState.scope.filterDepts(r[1] as List<Department>);
       _browserKey = UniqueKey();
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);

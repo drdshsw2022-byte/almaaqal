@@ -199,13 +199,14 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   Future<void> _register(Student st, String method,
       {bool force = false}) async {
     if (_present.contains(st.id)) {
-      _show(_Result(true, st.name, 'مسجّل حضوره مسبقاً في هذه المحاضرة',
+      _show(_Result(true, st.name,
+          'الرقم الجامعي: ${st.id}\nمسجّل حضوره مسبقاً في هذه المحاضرة',
           warn: true));
       return;
     }
     final why = force ? null : _whyNot(st);
     if (why != null) {
-      _show(_Result(false, st.name, why,
+      _show(_Result(false, st.name, 'الرقم الجامعي: ${st.id}\n$why',
           warn: true, overrideStudent: st, method: method));
       return;
     }
@@ -223,7 +224,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
       HapticFeedback.mediumImpact();
       SystemSound.play(SystemSoundType.click);
       _show(_Result(true, st.name,
-          '${st.id} • ${shiftName(st.shift)} • تم تسجيل الحضور (${methodName(method)})'));
+          'الرقم الجامعي: ${st.id}\n${shiftName(st.shift)} • تم تسجيل الحضور (${methodName(method)})'));
     } catch (e) {
       _show(_Result(false, st.name, friendlyError(e)));
     } finally {
@@ -376,7 +377,8 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                             style:
                                 const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(
-                            '${r.studentId} • ${fmtTime(r.dateTime)} • ${methodName(r.method)}'),
+                            'الرقم الجامعي: ${r.studentId}\n${fmtTime(r.dateTime)} • ${methodName(r.method)}'),
+                        isThreeLine: true,
                       ),
                     )),
             ],
@@ -606,7 +608,7 @@ class _StudentSearchSheetState extends State<_StudentSearchSheet> {
                           leading: const Icon(Icons.person_outline),
                           title: Text(list[i].name),
                           subtitle: Text(
-                              '${list[i].id} • ${shiftName(list[i].shift)}'),
+                              'الرقم الجامعي: ${list[i].id} • ${shiftName(list[i].shift)}'),
                           onTap: () => Navigator.pop(context, list[i]),
                         ),
                       ),

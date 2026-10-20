@@ -45,8 +45,16 @@ class _CoursePickerScreenState extends State<CoursePickerScreen> {
   Future<void> _load() async {
     try {
       final r = await Future.wait([repo.courses(), repo.departments()]);
-      _all = r[0] as List<Course>;
-      _depts = r[1] as List<Department>;
+      // الإدارة ترى نطاقها فقط؛ التدريسي يرى كل المواد (قد يدرّس في أقسام أخرى)
+      final u = AppState.user.value;
+      final scoped = u != null && isManagement(u.role);
+      final scope = AppState.scope;
+      _all = (r[0] as List<Course>)
+          .where((c) => !scoped || scope.hasDept(c.deptId))
+          .toList();
+      _depts = scoped
+          ? scope.filterDepts(r[1] as List<Department>)
+          : r[1] as List<Department>;
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     }

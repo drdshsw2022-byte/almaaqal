@@ -33,6 +33,9 @@ class AppConfig {
   // ---------------- الوضع التجريبي ----------------
   static const demoAdminEmail = 'admin@$universityDomain';
   static const demoDoctorEmail = 'doctor@$universityDomain';
+  static const demoPresidentEmail = 'president@$universityDomain';
+  static const demoDeanEmail = 'dean@$universityDomain';
+  static const demoHeadEmail = 'head@$universityDomain';
 
   static bool isUniversityEmail(String email) =>
       email.toLowerCase().trim().endsWith('@$universityDomain');

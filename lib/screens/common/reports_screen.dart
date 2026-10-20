@@ -94,7 +94,7 @@ class _CourseReportScreenState extends State<CourseReportScreen> {
     final b = StringBuffer('﻿');
     b.writeln(
         'المادة,${widget.course.nameAr} (${widget.course.code}),${stageName(widget.course.stage)}');
-    b.writeln('الرقم المعرفي,اسم الطالب,الدوام,عدد المحاضرات,حضور,غياب,نسبة الغياب %,الحالة');
+    b.writeln('الرقم الجامعي,اسم الطالب,الدوام,عدد المحاضرات,حضور,غياب,نسبة الغياب %,الحالة');
     for (final s in stats) {
       b.writeln([
         s.student.id,
@@ -233,7 +233,7 @@ class _CourseReportScreenState extends State<CourseReportScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(
-                  '${s.student.id} • ${shiftName(s.student.shift)} • حضور ${s.present}/${s.total} • غياب ${s.absencePercent.toStringAsFixed(1)}%',
+                  'الرقم الجامعي: ${s.student.id} • ${shiftName(s.student.shift)}\nحضور ${s.present}/${s.total} • غياب ${s.absencePercent.toStringAsFixed(1)}%',
                   style: const TextStyle(fontSize: 12)),
               trailing: Pill(st.label, color: st.color),
             ),
@@ -327,9 +327,12 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
 
   bool get _canEdit {
     final u = AppState.user.value;
-    return u != null &&
-        (u.role == Role.admin ||
-            (u.role == Role.doctor && u.id == widget.session.doctorId));
+    if (u == null) return false;
+    if (u.id == widget.session.doctorId) return true; // صاحب المحاضرة
+    if (u.role == Role.admin || u.role == Role.president) return true;
+    // العميد ورئيس القسم ضمن نطاقهما
+    return (u.role == Role.dean || u.role == Role.head) &&
+        AppState.scope.hasDept(widget.session.deptId);
   }
 
   @override
@@ -473,7 +476,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                             leading: const Icon(Icons.check_circle,
                                 color: AppColors.emerald),
                             title: Text(a.studentName),
-                            subtitle: Text(a.studentId),
+                            subtitle: Text('الرقم الجامعي: ${a.studentId}'),
                           ),
                         )),
                     SectionTitle('الغائبون (${absent.length})'),
@@ -499,8 +502,8 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
             rec != null
-                ? '${s.id} • ${fmtTime(rec.dateTime)} • ${methodName(rec.method)}'
-                : '${s.id} • ${shiftName(s.shift)}',
+                ? 'الرقم الجامعي: ${s.id} • ${fmtTime(rec.dateTime)} • ${methodName(rec.method)}'
+                : 'الرقم الجامعي: ${s.id} • ${shiftName(s.shift)}',
             style: const TextStyle(fontSize: 12)),
       ),
     );

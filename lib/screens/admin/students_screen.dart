@@ -36,9 +36,12 @@ class _StudentsScreenState extends State<StudentsScreen> {
   Future<void> _load() async {
     try {
       final r = await Future.wait([repo.students(), repo.departments()]);
-      _all = List<Student>.from(r[0] as List<Student>)
+      final scope = AppState.scope;
+      _all = (r[0] as List<Student>)
+          .where((x) => scope.isAll || scope.hasDept(x.deptId))
+          .toList()
         ..sort((a, b) => a.name.compareTo(b.name));
-      _depts = r[1] as List<Department>;
+      _depts = AppState.scope.filterDepts(r[1] as List<Department>);
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     }
@@ -116,7 +119,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final email = TextEditingController(text: s?.email);
     int stage = s?.stage ?? 1;
     String shift = s?.shift ?? 'morning';
-    String? dept = s?.deptId;
+    final sc = AppState.scope.deptIds;
+    String? dept = s?.deptId ?? ((sc != null && sc.length == 1) ? sc.first : null);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(

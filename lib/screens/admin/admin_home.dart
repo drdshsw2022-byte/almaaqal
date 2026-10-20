@@ -6,7 +6,10 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/profile_sheet.dart';
 import '../common/reports_screen.dart';
+import '../doctor/doctor_home.dart';
 import 'courses_screen.dart';
+import 'dashboard_screen.dart';
+import 'import_screen.dart';
 import 'settings_screen.dart';
 import 'staff_screen.dart';
 import 'structure_screen.dart';
@@ -42,12 +45,20 @@ class _AdminHomeState extends State<AdminHome> {
         repo.departments(),
         repo.recentSessions(limit: 30),
       ]);
-      _students = (r[0] as List).length;
-      _doctors =
-          (r[1] as List<Staff>).where((s) => s.role == 'doctor').length;
-      _courses = (r[2] as List).length;
-      _depts = (r[3] as List).length;
-      _recent = r[4] as List<LectureSession>;
+      final scope = AppState.scope;
+      _students = (r[0] as List<Student>)
+          .where((x) => scope.isAll || scope.hasDept(x.deptId))
+          .length;
+      _doctors = (r[1] as List<Staff>)
+          .where((x) =>
+              (x.role == 'doctor' || x.role == 'head') && scope.hasDept(x.deptId))
+          .length;
+      _courses =
+          (r[2] as List<Course>).where((c) => scope.hasDept(c.deptId)).length;
+      _depts = scope.filterDepts(r[3] as List<Department>).length;
+      _recent = (r[4] as List<LectureSession>)
+          .where((x) => scope.hasDept(x.deptId))
+          .toList();
       final now = DateTime.now();
       _today = _recent
           .where((s) =>
@@ -111,6 +122,10 @@ class _AdminHomeState extends State<AdminHome> {
   Widget build(BuildContext context) {
     final user = AppState.user.value!;
     final p = AppColors.tilePalette;
+    final role = user.role;
+    final top = role == Role.admin || role == Role.president;
+    final teaches = (role == Role.head || role == Role.dean) &&
+        user.staff!.courseIds.isNotEmpty;
     return Scaffold(
       body: RefreshIndicator(
         onRefresh: _load,
@@ -119,8 +134,14 @@ class _AdminHomeState extends State<AdminHome> {
           children: [
             GradientHeader(
               title: user.name,
-              subtitle: 'لوحة تحكم المدير • ${termName(AppState.settings.currentTerm)}',
-              roleIcon: Icons.admin_panel_settings,
+              subtitle:
+                  '${roleName(user.staff!.role)} • ${termName(AppState.settings.currentTerm)}',
+              roleIcon: switch (role) {
+                Role.president => Icons.account_balance_rounded,
+                Role.dean => Icons.domain_rounded,
+                Role.head => Icons.apartment_rounded,
+                _ => Icons.admin_panel_settings,
+              },
               actions: [
                 IconButton(
                   onPressed: () => showProfileSheet(context),
@@ -138,7 +159,7 @@ class _AdminHomeState extends State<AdminHome> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (!_loading && !_seeded) _seedCard(),
+                  if (!_loading && !_seeded && top) _seedCard(),
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
@@ -153,7 +174,7 @@ class _AdminHomeState extends State<AdminHome> {
                           icon: Icons.groups_rounded,
                           gradient: p[0]),
                       StatCard(
-                          label: 'الدكاترة',
+                          label: 'التدريسيون',
                           value: _loading ? '…' : '$_doctors',
                           icon: Icons.co_present_rounded,
                           gradient: p[1]),
@@ -179,11 +200,24 @@ class _AdminHomeState extends State<AdminHome> {
                     childAspectRatio: 0.92,
                     children: [
                       ActionTile(
-                          title: 'الكليات',
-                          subtitle: 'والأقسام',
-                          icon: Icons.account_balance_rounded,
-                          gradient: p[6],
-                          onTap: () => _open(const StructureScreen())),
+                          title: 'المؤشرات',
+                          subtitle: 'لوحة حية',
+                          icon: Icons.dashboard_rounded,
+                          gradient: p[7],
+                          onTap: () => _open(const DashboardScreen())),
+                      ActionTile(
+                          title: 'رفع Excel',
+                          subtitle: 'إدخال البيانات',
+                          icon: Icons.upload_file_rounded,
+                          gradient: p[3],
+                          onTap: () => _open(const ImportScreen())),
+                      if (top)
+                        ActionTile(
+                            title: 'الكليات',
+                            subtitle: 'والأقسام',
+                            icon: Icons.account_balance_rounded,
+                            gradient: p[6],
+                            onTap: () => _open(const StructureScreen())),
                       ActionTile(
                           title: 'المواد',
                           subtitle: 'الدراسية',
@@ -198,7 +232,7 @@ class _AdminHomeState extends State<AdminHome> {
                           onTap: () => _open(const StudentsScreen())),
                       ActionTile(
                           title: 'الكادر',
-                          subtitle: 'دكاترة ومدراء',
+                          subtitle: 'الهيئة التدريسية',
                           icon: Icons.badge_rounded,
                           gradient: p[1],
                           onTap: () => _open(const StaffScreen())),
@@ -208,12 +242,20 @@ class _AdminHomeState extends State<AdminHome> {
                           icon: Icons.insights_rounded,
                           gradient: p[4],
                           onTap: () => _open(const ReportsScreen())),
-                      ActionTile(
-                          title: 'الإعدادات',
-                          subtitle: 'الفصل والنسب',
-                          icon: Icons.tune_rounded,
-                          gradient: p[5],
-                          onTap: () => _open(SettingsScreen(onSeed: _seed))),
+                      if (teaches)
+                        ActionTile(
+                            title: 'محاضراتي',
+                            subtitle: 'تسجيل الحضور',
+                            icon: Icons.qr_code_scanner_rounded,
+                            gradient: p[5],
+                            onTap: () => _open(const DoctorHome(embedded: true))),
+                      if (top)
+                        ActionTile(
+                            title: 'الإعدادات',
+                            subtitle: 'الفصل والنسب',
+                            icon: Icons.tune_rounded,
+                            gradient: p[5],
+                            onTap: () => _open(SettingsScreen(onSeed: _seed))),
                     ],
                   ),
                   const SectionTitle('آخر المحاضرات'),

@@ -10,7 +10,9 @@ import '../common/reports_screen.dart';
 import 'live_session_screen.dart';
 
 class DoctorHome extends StatefulWidget {
-  const DoctorHome({super.key});
+  /// true عند فتحها من لوحة الإدارة (رئيس قسم/عميد يدرّس).
+  final bool embedded;
+  const DoctorHome({super.key, this.embedded = false});
 
   @override
   State<DoctorHome> createState() => _DoctorHomeState();
@@ -206,9 +208,17 @@ class _DoctorHomeState extends State<DoctorHome> {
             GradientHeader(
               title: _me.name,
               subtitle:
-                  'لوحة الدكتور • ${_me.deptId != null ? (_deptNames[_me.deptId] ?? '') : termName(AppState.settings.currentTerm)}',
+                  '${roleName(_me.role)} • ${_me.deptId != null ? (_deptNames[_me.deptId] ?? '') : termName(AppState.settings.currentTerm)}',
               roleIcon: Icons.co_present_rounded,
-              actions: [
+              actions: widget.embedded
+                  ? [
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back,
+                            color: Colors.white),
+                      ),
+                    ]
+                  : [
                 IconButton(
                   onPressed: () => showProfileSheet(context),
                   icon: const Icon(Icons.account_circle_outlined,

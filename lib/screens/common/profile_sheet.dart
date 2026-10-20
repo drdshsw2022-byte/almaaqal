@@ -8,11 +8,7 @@ import '../../widgets/common.dart';
 /// نافذة الملف الشخصي.
 Future<void> showProfileSheet(BuildContext context) {
   final u = AppState.user.value!;
-  final roleName = switch (u.role) {
-    Role.admin => 'مدير النظام',
-    Role.doctor => 'عضو هيئة تدريسية',
-    Role.student => 'طالب',
-  };
+  final roleLabel = roleName(u.staff?.role ?? 'student');
   return showModalBottomSheet(
     context: context,
     showDragHandle: true,
@@ -49,7 +45,7 @@ Future<void> showProfileSheet(BuildContext context) {
                 textAlign: TextAlign.center,
                 style:
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-            Center(child: Pill(roleName)),
+            Center(child: Pill(roleLabel)),
             const SizedBox(height: 16),
             _row(Icons.alternate_email, 'البريد', u.email ?? '—'),
             if (u.student != null) ...[

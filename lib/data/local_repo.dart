@@ -22,7 +22,7 @@ class LocalRepo implements Repo {
   AppSettings _settings = const AppSettings();
   String? _currentEmail;
 
-  static const _key = 'almaqal_local_db_v2';
+  static const _key = 'almaqal_local_db_v3';
 
   @override
   bool get isDemo => true;
@@ -116,6 +116,25 @@ class LocalRepo implements Repo {
         deptId: 'ai',
         courseIds: demoCourses);
     _staff[doc.id] = doc;
+    for (final x in [
+      Staff(
+          id: AppConfig.demoPresidentEmail,
+          name: 'أ.د. رئيس الجامعة',
+          role: 'president'),
+      Staff(
+          id: AppConfig.demoDeanEmail,
+          name: 'أ.د. عميد كلية الهندسة',
+          role: 'dean',
+          collegeId: 'eng'),
+      Staff(
+          id: AppConfig.demoHeadEmail,
+          name: 'أ.م.د. رئيس قسم الذكاء الاصطناعي',
+          role: 'head',
+          deptId: 'ai',
+          courseIds: demoCourses.take(3).toList()),
+    ]) {
+      _staff[x.id] = x;
+    }
     await _save();
   }
 
@@ -385,6 +404,38 @@ class LocalRepo implements Repo {
   @override
   Future<List<AttendanceRecord>> attendanceForStudent(String studentId) async =>
       _attendance.values.where((a) => a.studentId == studentId).toList();
+
+  @override
+  Future<List<LectureSession>> sessionsSince(int ms) async =>
+      _sessions.values.where((s) => s.startedAt >= ms).toList();
+
+  @override
+  Future<List<AttendanceRecord>> attendanceSince(int ms) async =>
+      _attendance.values.where((a) => a.time >= ms).toList();
+
+  @override
+  Future<void> saveStudentsBulk(List<Student> list) async {
+    for (final s in list) {
+      _students[s.id] = s;
+    }
+    await _save();
+  }
+
+  @override
+  Future<void> saveCoursesBulk(List<Course> list) async {
+    for (final c in list) {
+      _courses[c.id] = c;
+    }
+    await _save();
+  }
+
+  @override
+  Future<void> saveStaffBulk(List<Staff> list) async {
+    for (final s in list) {
+      _staff[s.id] = s;
+    }
+    await _save();
+  }
 
   @override
   Future<void> markAttendance(AttendanceRecord r) async {

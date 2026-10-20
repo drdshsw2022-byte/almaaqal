@@ -17,6 +17,35 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _email = TextEditingController();
   bool _busy = false;
+  Portal _portal = Portal.management;
+
+  static const _tabs = [
+    (Portal.management, 'الإدارة', Icons.account_balance_rounded),
+    (Portal.teacher, 'التدريسي', Icons.co_present_rounded),
+    (Portal.student, 'الطالب', Icons.school_rounded),
+  ];
+
+  /// هل يطابق الحساب التبويب المختار؟
+  String? _mismatch(AppUser u) {
+    switch (_portal) {
+      case Portal.management:
+        return isManagement(u.role)
+            ? null
+            : 'هذا الحساب ليس من الإدارة؛ ادخل من تبويب "${u.role == Role.student ? 'الطالب' : 'التدريسي'}"';
+      case Portal.teacher:
+        return (u.role == Role.doctor ||
+                u.role == Role.head ||
+                u.role == Role.dean)
+            ? null
+            : (u.role == Role.student
+                ? 'هذا حساب طالب؛ ادخل من تبويب "الطالب"'
+                : 'هذا الحساب إداري؛ ادخل من تبويب "الإدارة"');
+      case Portal.student:
+        return u.role == Role.student
+            ? null
+            : 'هذا الحساب ليس حساب طالب؛ ادخل من تبويب "${isManagement(u.role) ? 'الإدارة' : 'التدريسي'}"';
+    }
+  }
 
   @override
   void dispose() {
@@ -38,8 +67,13 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _busy = true);
     try {
       final u = await repo.signInWithGoogle(demoEmail: demoEmail);
-      await AppState.refreshSettings();
-      AppState.user.value = u;
+      final why = _mismatch(u);
+      if (why != null) {
+        await repo.signOut();
+        throw AppException(why);
+      }
+      await AppState.savePortal(_portal);
+      await AppState.afterLogin(u);
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     } finally {
@@ -110,11 +144,13 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Text('تسجيل الدخول',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+          _tabBar(),
+          const SizedBox(height: 18),
+          Text('دخول ${_tabs.firstWhere((t) => t.$1 == _portal).$2}',
+              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           const Text(
-              'بالبريد الجامعي الرسمي @${AppConfig.universityDomain} للطلبة والتدريسيين والإدارة',
+              'بالبريد الجامعي الرسمي @${AppConfig.universityDomain}',
               style: TextStyle(color: AppColors.muted, fontSize: 13)),
           const SizedBox(height: 20),
           if (repo.isDemo) ...[
@@ -141,6 +177,46 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  Widget _tabBar() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F2F9),
+        borderRadius: BorderRadius.circular(18),
+      ),
+      child: Row(
+        children: _tabs.map((t) {
+          final on = t.$1 == _portal;
+          return Expanded(
+            child: GestureDetector(
+              onTap: _busy ? null : () => setState(() => _portal = t.$1),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: on ? AppColors.mainGradient : null,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  children: [
+                    Icon(t.$3,
+                        size: 22, color: on ? Colors.white : AppColors.muted),
+                    const SizedBox(height: 2),
+                    Text(t.$2,
+                        style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: on ? Colors.white : AppColors.muted)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }
@@ -217,11 +293,22 @@ class _LoginScreenState extends State<LoginScreen> {
             const Text(
                 'اكتب البريد مباشرة بلا كلمة مرور. الطالب: رقمه المعرفي@almaaqal.edu.iq إلى أن تُضاف الإيميلات الرسمية.'),
             Wrap(
-              children: [
-                quick('المدير', AppConfig.demoAdminEmail),
-                quick('الدكتور', AppConfig.demoDoctorEmail),
-                quick('طالب تجريبي', '1989616052@${AppConfig.universityDomain}'),
-              ],
+              children: switch (_portal) {
+                Portal.management => [
+                    quick('رئيس الجامعة', AppConfig.demoPresidentEmail),
+                    quick('عميد', AppConfig.demoDeanEmail),
+                    quick('رئيس قسم', AppConfig.demoHeadEmail),
+                    quick('مدير النظام', AppConfig.demoAdminEmail),
+                  ],
+                Portal.teacher => [
+                    quick('تدريسي', AppConfig.demoDoctorEmail),
+                    quick('رئيس قسم يدرّس', AppConfig.demoHeadEmail),
+                  ],
+                Portal.student => [
+                    quick('طالب تجريبي',
+                        '1989616052@${AppConfig.universityDomain}'),
+                  ],
+              },
             ),
           ],
         ),

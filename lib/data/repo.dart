@@ -65,6 +65,14 @@ abstract class Repo {
   Future<List<AttendanceRecord>> attendanceForCourse(String courseId);
   Future<List<AttendanceRecord>> attendanceForStudent(String studentId);
 
+  Future<List<LectureSession>> sessionsSince(int ms);
+  Future<List<AttendanceRecord>> attendanceSince(int ms);
+
+  // ---------- الحفظ بالجملة (رفع Excel) ----------
+  Future<void> saveStudentsBulk(List<Student> list);
+  Future<void> saveCoursesBulk(List<Course> list);
+  Future<void> saveStaffBulk(List<Staff> list);
+
   /// يسجل الحضور ويرمي [AppException] إذا كان مسجلاً مسبقاً.
   Future<void> markAttendance(AttendanceRecord r);
   Future<void> removeAttendance(String recordId);
