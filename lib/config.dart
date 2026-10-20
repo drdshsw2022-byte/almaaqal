@@ -7,17 +7,17 @@ class AppConfig {
   static const city = 'البصرة';
   static const appName = 'نظام الحضور الذكي';
 
-  /// حسابات Google التي تملك صلاحية المدير العام دائماً.
+  /// نطاق البريد الرسمي للجامعة: لا يُقبل الدخول إلا به.
+  static const universityDomain = 'almaaqal.edu.iq';
+
+  /// حسابات تملك صلاحية المدير العام دائماً (حتى من خارج نطاق الجامعة).
   static const superAdminEmails = <String>['drdsh.sw2022@gmail.com'];
 
-  /// مدة صلاحية رمز QR الواحد بالثواني (يتجدد تلقائياً).
-  static const qrWindowSeconds = 15;
+  /// بادئة رمز هوية الطالب (QR / NFC).
+  static const studentCodePrefix = 'ALMAQAL-ST';
 
-  /// عدد النوافذ الزمنية المقبولة قبل/بعد الحالية (لتحمّل فروق ساعات الأجهزة).
-  static const qrTolerance = 4;
-
-  /// نطاق البريد الداخلي لتسجيل الدخول بالرقم الجامعي.
-  static const idEmailDomain = 'id.almaqal.app';
+  /// معرّف تطبيق NFC (AID) لهوية الطالب على الهاتف: F0 + "ALMAQAL".
+  static const nfcAid = 'F0414C4D4151414C';
 
   // ---------------- Firebase ----------------
   static const fbApiKey = String.fromEnvironment('FB_API_KEY');
@@ -31,8 +31,14 @@ class AppConfig {
       fbApiKey.isNotEmpty && fbAppId.isNotEmpty && fbProjectId.isNotEmpty;
 
   // ---------------- الوضع التجريبي ----------------
-  static const demoAdminId = 'admin';
-  static const demoAdminPassword = 'admin123';
-  static const demoDoctorId = 'D1001';
-  static const demoDoctorPassword = '123456';
+  static const demoAdminEmail = 'admin@$universityDomain';
+  static const demoDoctorEmail = 'doctor@$universityDomain';
+
+  static bool isUniversityEmail(String email) =>
+      email.toLowerCase().trim().endsWith('@$universityDomain');
+
+  static bool isAllowedEmail(String email) {
+    final e = email.toLowerCase().trim();
+    return isUniversityEmail(e) || superAdminEmails.contains(e);
+  }
 }

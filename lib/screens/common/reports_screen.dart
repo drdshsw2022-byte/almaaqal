@@ -402,7 +402,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
                       builder: (_) => LiveSessionScreen(
                           session: s, course: widget.course))),
               icon: const Icon(Icons.qr_code_2),
-              label: const Text('عرض رمز QR'),
+              label: const Text('متابعة التسجيل'),
             )
           : null,
       body: _loading
@@ -499,7 +499,7 @@ class _SessionDetailScreenState extends State<SessionDetailScreen> {
             style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
             rec != null
-                ? '${s.id} • ${fmtTime(rec.dateTime)} • ${rec.method == 'qr' ? 'QR' : 'يدوي'}'
+                ? '${s.id} • ${fmtTime(rec.dateTime)} • ${methodName(rec.method)}'
                 : '${s.id} • ${shiftName(s.shift)}',
             style: const TextStyle(fontSize: 12)),
       ),

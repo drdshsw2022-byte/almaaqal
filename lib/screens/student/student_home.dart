@@ -6,7 +6,9 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/profile_sheet.dart';
 import '../common/student_report_screen.dart';
-import 'scan_screen.dart';
+import '../../data/repo.dart';
+import '../../services/nfc_service.dart';
+import 'id_card_screen.dart';
 
 class StudentHome extends StatefulWidget {
   const StudentHome({super.key});
@@ -41,17 +43,16 @@ class _StudentHomeState extends State<StudentHome> {
           .firstOrNull;
       _data = await loadStudentSummary(_me,
           term: AppState.settings.currentTerm);
+      // تجهيز الهوية لـ NFC (تقريب الهاتف من هاتف الدكتور)
+      await NfcService.setStudentPayload(StudentCode.encode(_me));
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     }
     if (mounted) setState(() => _loading = false);
   }
 
-  Future<void> _scan() async {
-    final ok = await Navigator.push<bool>(
-        context, MaterialPageRoute(builder: (_) => const ScanScreen()));
-    if (ok == true) _load();
-  }
+  void _openCard() => Navigator.push(context,
+      MaterialPageRoute(builder: (_) => IdCardScreen(student: _me)));
 
   @override
   Widget build(BuildContext context) {
@@ -86,13 +87,24 @@ class _StudentHomeState extends State<StudentHome> {
                   icon: const Icon(Icons.logout, color: Colors.white),
                 ),
               ],
-              bottom: _scanButton(),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  GestureDetector(
+                    onTap: _openCard,
+                    child: StudentIdCard(
+                        student: me, deptName: _deptName, compact: true),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: _openCard,
+                    icon: const Icon(Icons.qr_code_2),
+                    label: const Text('عرض الهوية كاملة للمسح'),
+                  ),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Expanded(
@@ -166,53 +178,6 @@ class _StudentHomeState extends State<StudentHome> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _scanButton() {
-    return Material(
-      color: Colors.transparent,
-      child: Ink(
-        decoration: BoxDecoration(
-          gradient: AppColors.goldGradient,
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: [
-            BoxShadow(
-                color: AppColors.gold.withOpacity(0.45),
-                blurRadius: 20,
-                offset: const Offset(0, 8))
-          ],
-        ),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(22),
-          onTap: _scan,
-          child: const Padding(
-            padding: EdgeInsets.symmetric(vertical: 18, horizontal: 18),
-            child: Row(
-              children: [
-                Icon(Icons.qr_code_scanner_rounded,
-                    color: Colors.white, size: 40),
-                SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('تسجيل الحضور',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900)),
-                      Text('امسح رمز QR المعروض في القاعة',
-                          style: TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios, color: Colors.white),
-              ],
-            ),
-          ),
         ),
       ),
     );

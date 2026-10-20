@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
-import '../../config.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
@@ -119,7 +118,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'معلومات',
             child: Text(
               'وضع التشغيل: ${repo.isDemo ? 'تجريبي محلي (جهاز واحد)' : 'Firebase (متعدد الأجهزة)'}\n'
-              'مدة رمز QR: ${AppConfig.qrWindowSeconds} ثانية ويتجدد تلقائياً\n'
+              'طرق التسجيل: مسح QR لهوية الطالب، أو NFC (بطاقة أو هاتف)\n'
               'الإصدار 1.0.0',
               style: const TextStyle(color: AppColors.muted, height: 1.7),
             ),

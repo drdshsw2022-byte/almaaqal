@@ -4,7 +4,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
-import '../common/filters.dart';
+import '../common/course_browser.dart';
 
 /// إدارة المواد الدراسية.
 class CoursesScreen extends StatefulWidget {
@@ -20,9 +20,9 @@ class _CoursesScreenState extends State<CoursesScreen> {
   List<Department> _depts = [];
   String? _dept;
   int? _stage;
-  int? _term;
-  String _q = '';
+  int _term = 1;
   bool _loading = true;
+  Key _browserKey = UniqueKey();
 
   @override
   void initState() {
@@ -39,27 +39,12 @@ class _CoursesScreenState extends State<CoursesScreen> {
             ? a.semester.compareTo(b.semester)
             : a.code.compareTo(b.code));
       _depts = r[1] as List<Department>;
+      _browserKey = UniqueKey();
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     }
     if (mounted) setState(() => _loading = false);
   }
-
-  String _deptName(String id) =>
-      _depts.where((d) => d.id == id).map((d) => d.name).firstOrNull ?? id;
-
-  List<Course> get _filtered => _all.where((c) {
-        if (_dept != null && c.deptId != _dept) return false;
-        if (_stage != null && c.stage != _stage) return false;
-        if (_term != null && c.term != _term) return false;
-        if (_q.isNotEmpty &&
-            !c.nameAr.contains(_q) &&
-            !c.code.toLowerCase().contains(_q.toLowerCase()) &&
-            !c.nameEn.toLowerCase().contains(_q.toLowerCase())) {
-          return false;
-        }
-        return true;
-      }).toList();
 
   Future<void> _edit([Course? c]) async {
     final code = TextEditingController(text: c?.code);
@@ -67,7 +52,8 @@ class _CoursesScreenState extends State<CoursesScreen> {
     final en = TextEditingController(text: c?.nameEn);
     final ects = TextEditingController(text: c == null ? '5' : '${c.ects}');
     String dept = c?.deptId ?? _dept ?? (_depts.isNotEmpty ? _depts.first.id : '');
-    int semester = c?.semester ?? 1;
+    int semester = c?.semester ??
+        (_stage != null ? (_stage! - 1) * 2 + _term : 1);
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -181,7 +167,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final list = _filtered;
     return Scaffold(
       appBar: gradientAppBar('المواد الدراسية'),
       floatingActionButton: FloatingActionButton.extended(
@@ -191,50 +176,22 @@ class _CoursesScreenState extends State<CoursesScreen> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Column(
-              children: [
-                FilterBar(
-                  searchHint: 'ابحث بالاسم أو الرمز',
-                  onSearch: (v) => setState(() => _q = v.trim()),
-                  children: [
-                    DeptChip(
-                        depts: _depts,
-                        value: _dept,
-                        onChanged: (v) => setState(() => _dept = v)),
-                    ChoiceMenuChip<int>(
-                      label: 'المرحلة',
-                      value: _stage,
-                      options: const {1: 'الأولى', 2: 'الثانية', 3: 'الثالثة', 4: 'الرابعة'},
-                      onChanged: (v) => setState(() => _stage = v),
-                    ),
-                    ChoiceMenuChip<int>(
-                      label: 'الفصل',
-                      value: _term,
-                      options: const {1: 'الأول', 2: 'الثاني'},
-                      onChanged: (v) => setState(() => _term = v),
-                    ),
-                  ],
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
-                  child: Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: Text('${list.length} مادة',
-                        style: const TextStyle(color: AppColors.muted)),
-                  ),
-                ),
-                Expanded(
-                  child: list.isEmpty
-                      ? const EmptyState(
-                          icon: Icons.menu_book, text: 'لا توجد مواد مطابقة')
-                      : ListView.separated(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 90),
-                          itemCount: list.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (_, i) => _tile(list[i]),
-                        ),
-                ),
-              ],
+          : CourseBrowser(
+              key: _browserKey,
+              courses: _all,
+              departments: _depts,
+              initialDept: _dept,
+              initialStage: _stage,
+              initialTerm: _term,
+              onChanged: (d, st, t) {
+                _dept = d;
+                _stage = st;
+                _term = t;
+              },
+              itemBuilder: (ctx, c) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _tile(c),
+              ),
             ),
     );
   }
@@ -286,8 +243,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         Pill(c.code),
                         Pill(termName(c.term), color: AppColors.violet),
                         Pill('${c.ects} ECTS', color: AppColors.emerald),
-                        if (_dept == null)
-                          Pill(_deptName(c.deptId), color: AppColors.orange),
                       ],
                     ),
                   ],

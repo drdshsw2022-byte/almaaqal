@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_state.dart';
 import '../config.dart';
 import '../models.dart';
+import '../services/nfc_service.dart';
 import '../theme.dart';
 
 /// شعار التطبيق.
@@ -488,6 +489,7 @@ Future<void> logout(BuildContext context) async {
       ok: 'خروج');
   if (!ok) return;
   await AppState.repo.signOut();
+  await NfcService.setStudentPayload(null);
   AppState.user.value = null;
 }
 

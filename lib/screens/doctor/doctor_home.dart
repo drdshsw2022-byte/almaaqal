@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
-import '../../data/repo.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
@@ -140,7 +139,7 @@ class _DoctorHomeState extends State<DoctorHome> {
               ElevatedButton.icon(
                 onPressed: () => Navigator.pop(ctx, true),
                 icon: const Icon(Icons.qr_code_2),
-                label: const Text('توليد رمز الحضور'),
+                label: const Text('بدء تسجيل الحضور'),
               ),
             ],
           ),
@@ -158,7 +157,6 @@ class _DoctorHomeState extends State<DoctorHome> {
       doctorId: _me.id,
       doctorName: _me.name,
       title: title.text.trim().isEmpty ? 'المحاضرة $n' : title.text.trim(),
-      secret: randomSecret(),
       startedAt: DateTime.now().millisecondsSinceEpoch,
     );
     final created = await runBusy(context, () => repo.createSession(session));
@@ -271,7 +269,7 @@ class _DoctorHomeState extends State<DoctorHome> {
                       ],
                     )
                   else
-                    ...shown.map(_courseCard),
+                    ..._grouped(shown),
                 ],
               ),
             ),
@@ -279,6 +277,45 @@ class _DoctorHomeState extends State<DoctorHome> {
         ),
       ),
     );
+  }
+
+  /// تجميع المواد: القسم ← المرحلة، ثم مواد الكورس.
+  List<Widget> _grouped(List<Course> list) {
+    final groups = <String, List<Course>>{};
+    for (final c in list) {
+      groups.putIfAbsent('${c.deptId}|${c.stage}', () => []).add(c);
+    }
+    final keys = groups.keys.toList()
+      ..sort((a, b) {
+        final ga = groups[a]!.first, gb = groups[b]!.first;
+        final d = (_deptNames[ga.deptId] ?? '').compareTo(_deptNames[gb.deptId] ?? '');
+        return d != 0 ? d : ga.stage.compareTo(gb.stage);
+      });
+    final out = <Widget>[];
+    for (final k in keys) {
+      final g = groups[k]!..sort((a, b) => a.term != b.term
+          ? a.term.compareTo(b.term)
+          : a.nameAr.compareTo(b.nameAr));
+      final first = g.first;
+      out.add(Padding(
+        padding: const EdgeInsets.fromLTRB(4, 10, 4, 8),
+        child: Row(
+          children: [
+            const Icon(Icons.apartment_rounded, size: 18, color: AppColors.royal),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                  '${_deptNames[first.deptId] ?? first.deptId} • ${stageName(first.stage)}',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, color: AppColors.royal)),
+            ),
+            Pill('${g.length} مادة'),
+          ],
+        ),
+      ));
+      out.addAll(g.map(_courseCard));
+    }
+    return out;
   }
 
   Widget _activeBanner(LectureSession s) {
@@ -347,7 +384,7 @@ class _DoctorHomeState extends State<DoctorHome> {
                 style:
                     const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             subtitle: Text(
-                '${c.code} • ${stageName(c.stage)}\n${_deptNames[c.deptId] ?? c.deptId} • $count محاضرة',
+                '${c.code} • ${termName(c.term)}\n$count محاضرة مسجّلة',
                 style: const TextStyle(fontSize: 12)),
             isThreeLine: true,
           ),

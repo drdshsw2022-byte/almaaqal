@@ -32,7 +32,7 @@ String stageName(int s) => stageNames[s] ?? 'المرحلة $s';
 
 const shiftNames = {'morning': 'صباحي', 'evening': 'مسائي', 'all': 'الكل'};
 String shiftName(String s) => shiftNames[s] ?? s;
-String termName(int t) => t == 1 ? 'الفصل الأول' : 'الفصل الثاني';
+String termName(int t) => t == 1 ? 'الكورس الأول' : 'الكورس الثاني';
 
 class College {
   final String id;
@@ -116,8 +116,8 @@ class Student {
   final int stage;
   final String shift; // morning | evening
   final String? deptId;
-  final String? email; // حساب Google المرتبط
-  final bool activated;
+  final String? email; // البريد الجامعي الرسمي
+  final String? nfcUid; // معرّف شريحة NFC في الهوية الجامعية
 
   Student({
     required this.id,
@@ -126,7 +126,7 @@ class Student {
     required this.shift,
     this.deptId,
     this.email,
-    this.activated = false,
+    this.nfcUid,
   });
 
   Student copyWith({
@@ -137,7 +137,8 @@ class Student {
     bool clearDept = false,
     String? email,
     bool clearEmail = false,
-    bool? activated,
+    String? nfcUid,
+    bool clearNfc = false,
   }) =>
       Student(
         id: id,
@@ -146,7 +147,7 @@ class Student {
         shift: shift ?? this.shift,
         deptId: clearDept ? null : (deptId ?? this.deptId),
         email: clearEmail ? null : (email ?? this.email),
-        activated: activated ?? this.activated,
+        nfcUid: clearNfc ? null : (nfcUid ?? this.nfcUid),
       );
 
   Map<String, dynamic> toMap() => {
@@ -156,7 +157,7 @@ class Student {
         'shift': shift,
         'deptId': deptId,
         'email': email,
-        'activated': activated,
+        'nfcUid': nfcUid,
       };
 
   factory Student.fromMap(Map<String, dynamic> m) => Student(
@@ -166,68 +167,58 @@ class Student {
         shift: '${m['shift'] ?? 'morning'}',
         deptId: asStrOrNull(m['deptId']),
         email: asStrOrNull(m['email'])?.toLowerCase(),
-        activated: m['activated'] == true,
+        nfcUid: asStrOrNull(m['nfcUid'])?.toUpperCase(),
       );
 }
 
+/// عضو الكادر. المعرّف = البريد الجامعي (بأحرف صغيرة).
 class Staff {
-  final String id; // الرقم الوظيفي
+  final String id; // البريد الجامعي
   final String name;
   final String role; // admin | doctor
-  final String? email;
   final String? deptId;
   final List<String> courseIds;
-  final bool activated;
 
   Staff({
-    required this.id,
+    required String id,
     required this.name,
     required this.role,
-    this.email,
     this.deptId,
     this.courseIds = const [],
-    this.activated = false,
-  });
+  }) : id = id.trim().toLowerCase();
 
   bool get isAdmin => role == 'admin';
+  String get email => id;
 
   Staff copyWith({
     String? name,
     String? role,
-    String? email,
-    bool clearEmail = false,
     String? deptId,
     List<String>? courseIds,
-    bool? activated,
   }) =>
       Staff(
         id: id,
         name: name ?? this.name,
         role: role ?? this.role,
-        email: clearEmail ? null : (email ?? this.email),
         deptId: deptId ?? this.deptId,
         courseIds: courseIds ?? this.courseIds,
-        activated: activated ?? this.activated,
       );
 
   Map<String, dynamic> toMap() => {
         'id': id,
+        'email': id,
         'name': name,
         'role': role,
-        'email': email,
         'deptId': deptId,
         'courseIds': courseIds,
-        'activated': activated,
       };
 
   factory Staff.fromMap(Map<String, dynamic> m) => Staff(
-        id: '${m['id']}',
+        id: '${m['id'] ?? m['email']}',
         name: '${m['name'] ?? ''}',
         role: '${m['role'] ?? 'doctor'}',
-        email: asStrOrNull(m['email'])?.toLowerCase(),
         deptId: asStrOrNull(m['deptId']),
         courseIds: asStrList(m['courseIds']),
-        activated: m['activated'] == true,
       );
 }
 
@@ -247,6 +238,7 @@ class AppUser {
   String get id => student?.id ?? staff!.id;
   String get name => student?.name ?? staff!.name;
   String? get email => student?.email ?? staff?.email;
+  String get displayId => student?.id ?? staff!.email;
 }
 
 class LectureSession {
@@ -259,7 +251,6 @@ class LectureSession {
   final String doctorId;
   final String doctorName;
   final String title;
-  final String secret;
   final int startedAt; // ms
   final int? endedAt;
   final bool active;
@@ -274,7 +265,6 @@ class LectureSession {
     required this.doctorId,
     required this.doctorName,
     required this.title,
-    required this.secret,
     required this.startedAt,
     this.endedAt,
     this.active = true,
@@ -293,7 +283,6 @@ class LectureSession {
         doctorId: doctorId,
         doctorName: doctorName,
         title: title,
-        secret: secret,
         startedAt: startedAt,
         endedAt: endedAt ?? this.endedAt,
         active: active ?? this.active,
@@ -315,7 +304,6 @@ class LectureSession {
         'doctorId': doctorId,
         'doctorName': doctorName,
         'title': title,
-        'secret': secret,
         'startedAt': startedAt,
         'endedAt': endedAt,
         'active': active,
@@ -331,7 +319,6 @@ class LectureSession {
         doctorId: '${m['doctorId'] ?? ''}',
         doctorName: '${m['doctorName'] ?? ''}',
         title: '${m['title'] ?? ''}',
-        secret: '${m['secret'] ?? ''}',
         startedAt: asInt(m['startedAt']),
         endedAt: m['endedAt'] == null ? null : asInt(m['endedAt']),
         active: m['active'] == true,
@@ -345,7 +332,7 @@ class AttendanceRecord {
   final String studentId;
   final String studentName;
   final int time;
-  final String method; // qr | manual
+  final String method; // qr | nfc | manual
 
   AttendanceRecord({
     required this.sessionId,
@@ -422,9 +409,15 @@ class AppException implements Exception {
   String toString() => message;
 }
 
-/// يُرمى عند تسجيل الدخول بحساب Google غير مرتبط بأي رقم جامعي.
-class NotLinkedException extends AppException {
+/// يُرمى عند تسجيل الدخول ببريد غير مسجّل في قاعدة البيانات.
+class NotRegisteredException extends AppException {
   final String email;
-  NotLinkedException(this.email)
-      : super('حساب Google ($email) غير مرتبط برقم جامعي بعد');
+  NotRegisteredException(this.email)
+      : super('البريد $email غير مسجّل في نظام الحضور. راجع إدارة القسم لإضافته');
 }
+
+String methodName(String m) => switch (m) {
+      'qr' => 'QR',
+      'nfc' => 'NFC',
+      _ => 'يدوي',
+    };

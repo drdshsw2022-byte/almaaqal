@@ -6,6 +6,8 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/filters.dart';
 import '../common/student_report_screen.dart';
+import '../common/nfc_link.dart';
+import '../student/id_card_screen.dart';
 
 const _noDept = '__none__';
 
@@ -115,7 +117,6 @@ class _StudentsScreenState extends State<StudentsScreen> {
     int stage = s?.stage ?? 1;
     String shift = s?.shift ?? 'morning';
     String? dept = s?.deptId;
-    bool activated = s?.activated ?? false;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -175,17 +176,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                     keyboardType: TextInputType.emailAddress,
                     textDirection: TextDirection.ltr,
                     decoration: const InputDecoration(
-                        labelText: 'بريد Google المرتبط (اختياري)')),
-                if (s != null)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: activated,
-                    onChanged: (v) => setD(() => activated = v),
-                    title: const Text('الحساب مفعّل'),
-                    subtitle: const Text(
-                        'إلغاء التفعيل يسمح للطالب بإعادة تعيين كلمة المرور',
-                        style: TextStyle(fontSize: 11)),
-                  ),
+                        labelText: 'البريد الجامعي الرسمي')),
               ],
             ),
           ),
@@ -223,7 +214,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
       shift: shift,
       deptId: dept,
       email: e.isEmpty ? null : e,
-      activated: activated,
+      nfcUid: s?.nfcUid,
     );
     await runBusy(context, () => repo.saveStudent(st), success: 'تم الحفظ');
     _load();
@@ -299,7 +290,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
                           style: const TextStyle(color: AppColors.muted)),
                       const Spacer(),
                       Text(
-                          'مفعّل: ${list.where((s) => s.activated).length}',
+                          'بطاقة NFC: ${list.where((s) => s.nfcUid != null).length}',
                           style: const TextStyle(
                               color: AppColors.emerald,
                               fontWeight: FontWeight.w700)),
@@ -354,26 +345,47 @@ class _StudentsScreenState extends State<StudentsScreen> {
               style: const TextStyle(fontSize: 12)),
           isThreeLine: true,
           trailing: PopupMenuButton<String>(
-            onSelected: (v) {
-              if (v == 'report') {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => StudentReportScreen(student: s)));
-              } else if (v == 'edit') {
-                _edit(s);
-              } else {
-                _delete(s);
+            onSelected: (v) async {
+              switch (v) {
+                case 'report':
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => StudentReportScreen(student: s)));
+                case 'card':
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => IdCardScreen(student: s)));
+                case 'nfc':
+                  if (await linkNfcCard(context, s)) _load();
+                case 'unnfc':
+                  await runBusy(context, () => repo.setStudentNfc(s.id, null),
+                      success: 'تم إلغاء ربط البطاقة');
+                  _load();
+                case 'edit':
+                  _edit(s);
+                default:
+                  _delete(s);
               }
             },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'report', child: Text('سجل الحضور')),
-              PopupMenuItem(value: 'edit', child: Text('تعديل')),
-              PopupMenuItem(value: 'del', child: Text('حذف')),
+            itemBuilder: (_) => [
+              const PopupMenuItem(value: 'report', child: Text('سجل الحضور')),
+              const PopupMenuItem(value: 'card', child: Text('الهوية و QR')),
+              PopupMenuItem(
+                  value: 'nfc',
+                  child: Text(s.nfcUid == null
+                      ? 'ربط بطاقة NFC'
+                      : 'تغيير بطاقة NFC')),
+              if (s.nfcUid != null)
+                const PopupMenuItem(
+                    value: 'unnfc', child: Text('إلغاء ربط البطاقة')),
+              const PopupMenuItem(value: 'edit', child: Text('تعديل')),
+              const PopupMenuItem(value: 'del', child: Text('حذف')),
             ],
             icon: Icon(
-              s.activated ? Icons.verified : Icons.more_vert,
-              color: s.activated ? AppColors.emerald : AppColors.muted,
+              s.nfcUid != null ? Icons.nfc : Icons.more_vert,
+              color: s.nfcUid != null ? AppColors.emerald : AppColors.muted,
             ),
           ),
         ),

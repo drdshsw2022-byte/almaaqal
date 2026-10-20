@@ -1,7 +1,5 @@
 import 'dart:convert';
-import 'dart:math';
 
-import 'package:crypto/crypto.dart';
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../config.dart';
@@ -12,14 +10,11 @@ import '../models.dart';
 abstract class Repo {
   bool get isDemo;
 
-  // ---------- الحساب ----------
+  // ---------- الحساب (البريد الجامعي فقط) ----------
   Future<AppUser?> restoreSession();
-  Future<AppUser> signInWithId(String id, String password);
-  Future<AppUser> activateAccount(String id, String newPassword);
+
+  /// الدخول بحساب Google الجامعي. في الوضع التجريبي يُمرَّر البريد مباشرة.
   Future<AppUser> signInWithGoogle({String? demoEmail});
-  Future<AppUser> linkGoogleWithId(
-      String googleEmail, String id, String password);
-  Future<void> changePassword(String oldPassword, String newPassword);
   Future<void> signOut();
 
   // ---------- تهيئة البيانات ----------
@@ -40,9 +35,14 @@ abstract class Repo {
   // ---------- الطلاب ----------
   Future<List<Student>> students();
   Future<Student?> student(String id);
+  Future<Student?> studentByEmail(String email);
+  Future<Student?> studentByNfc(String uid);
   Future<void> saveStudent(Student s);
   Future<void> deleteStudent(String id);
   Future<void> setStudentsDept(List<String> ids, String? deptId);
+
+  /// ربط شريحة NFC بطالب (null لإلغاء الربط). يرمي خطأ إن كانت مرتبطة بغيره.
+  Future<void> setStudentNfc(String studentId, String? uid);
 
   // ---------- الكادر ----------
   Future<List<Staff>> staff();
@@ -58,7 +58,6 @@ abstract class Repo {
   Future<void> closeSession(String id);
   Future<void> deleteSession(String id);
   Future<LectureSession?> session(String id);
-  Stream<LectureSession?> watchSession(String id);
   Future<List<LectureSession>> sessionsForCourse(String courseId);
   Future<List<LectureSession>> sessionsForDoctor(String doctorId);
   Future<List<LectureSession>> recentSessions({int limit = 50});
@@ -101,56 +100,27 @@ class SeedData {
   }
 }
 
-String randomSecret([int len = 32]) {
-  const chars =
-      'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
-  final r = Random.secure();
-  return List.generate(len, (_) => chars[r.nextInt(chars.length)]).join();
-}
+/// رمز هوية الطالب المشفّر في QR وفي NFC: ALMAQAL-ST|<الرقم المعرفي>
+class StudentCode {
+  static String encode(Student s) => '${AppConfig.studentCodePrefix}|${s.id}';
 
-String hashPassword(String id, String password) =>
-    sha256.convert(utf8.encode('almaqal::$id::$password')).toString();
-
-/// رمز QR متجدد: ALMAQAL|sessionId|window|token
-class QrToken {
-  static const prefix = 'ALMAQAL';
-
-  static int windowOf(DateTime t) =>
-      t.millisecondsSinceEpoch ~/ (AppConfig.qrWindowSeconds * 1000);
-
-  static String tokenFor(String secret, int window) =>
-      sha256.convert(utf8.encode('$secret:$window')).toString().substring(0, 16);
-
-  static String payload(LectureSession s, DateTime now) {
-    final w = windowOf(now);
-    return '$prefix|${s.id}|$w|${tokenFor(s.secret, w)}';
+  /// يستخرج الرقم المعرفي أو البريد من نص ممسوح.
+  /// يقبل: رمز التطبيق، أو الرقم المعرفي وحده (هوية مطبوعة)، أو البريد الجامعي.
+  static ({String? id, String? email}) parse(String raw) {
+    final t = raw.trim();
+    if (t.startsWith('${AppConfig.studentCodePrefix}|')) {
+      final parts = t.split('|');
+      if (parts.length >= 2 && parts[1].isNotEmpty) {
+        return (id: parts[1], email: null);
+      }
+      return (id: null, email: null);
+    }
+    if (t.contains('@')) return (id: null, email: t.toLowerCase());
+    if (RegExp(r'^[0-9A-Za-z\-]{4,32}$').hasMatch(t)) {
+      return (id: t, email: null);
+    }
+    return (id: null, email: null);
   }
-
-  /// الثواني المتبقية قبل تجدد الرمز.
-  static int secondsLeft(DateTime now) {
-    final ms = AppConfig.qrWindowSeconds * 1000;
-    return ((ms - now.millisecondsSinceEpoch % ms) / 1000).ceil();
-  }
-
-  static ParsedQr? parse(String raw) {
-    final parts = raw.trim().split('|');
-    if (parts.length != 4 || parts[0] != prefix) return null;
-    final w = int.tryParse(parts[2]);
-    if (w == null || parts[1].isEmpty) return null;
-    return ParsedQr(parts[1], w, parts[3]);
-  }
-
-  static bool verify(LectureSession s, ParsedQr q, DateTime now) {
-    if ((q.window - windowOf(now)).abs() > AppConfig.qrTolerance) return false;
-    return q.token == tokenFor(s.secret, q.window);
-  }
-}
-
-class ParsedQr {
-  final String sessionId;
-  final int window;
-  final String token;
-  ParsedQr(this.sessionId, this.window, this.token);
 }
 
 /// حسابات مشتركة بين التنفيذين.

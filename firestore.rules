@@ -2,97 +2,77 @@ rules_version = '2';
 
 // قواعد حماية قاعدة بيانات نظام الحضور - جامعة المعقل الأهلية
 // انسخ هذا الملف إلى: Firebase Console > Firestore Database > Rules ثم اضغط Publish
+//
+// الهوية = البريد الجامعي الموثّق من Google.
+// الكادر: staff/<البريد>  •  الطلاب: students/<الرقم المعرفي>
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function signedIn() { return request.auth != null; }
-    function email() { return request.auth.token.email; }
+    function signedIn() { return request.auth != null && request.auth.token.email != null; }
+    function email() { return request.auth.token.email.lower(); }
 
-    // بريد الدخول بالرقم الجامعي: <الرقم>@id.almaqal.app
-    function idEmail(id) { return id.lower() + '@id.almaqal.app'; }
-
-    // المدير العام (عدّل القائمة عند الحاجة لتطابق config.dart)
+    // المدير العام (عدّل القائمة لتطابق superAdminEmails في config.dart)
     function isSuperAdmin() {
       return signedIn() && email() in ['drdsh.sw2022@gmail.com'];
     }
 
-    function staffDoc(id) {
-      return get(/databases/$(database)/documents/staff/$(id)).data;
+    // البريد الجامعي الرسمي فقط (أو المدير العام)
+    function isMember() {
+      return signedIn() && request.auth.token.email_verified == true &&
+        (email().matches('.*@almaaqal[.]edu[.]iq') || isSuperAdmin());
     }
 
-    // مدير مسجّل في مجموعة staff (بالرقم أو ببريد Google)
+    function isStaff() {
+      return isMember() && exists(/databases/$(database)/documents/staff/$(email()));
+    }
+
     function isAdmin() {
       return isSuperAdmin() ||
-        (signedIn() && email().matches('.*@id[.]almaqal[.]app') &&
-          exists(/databases/$(database)/documents/staff/$(email().split('@')[0])) &&
-          staffDoc(email().split('@')[0]).role == 'admin') ||
-        (signedIn() && email().matches('.*@id[.]almaqal[.]app') &&
-          exists(/databases/$(database)/documents/staff/$(email().split('@')[0].upper())) &&
-          staffDoc(email().split('@')[0].upper()).role == 'admin') ||
-        (signedIn() &&
-          exists(/databases/$(database)/documents/staff/superadmin) &&
-          staffDoc('superadmin').email == email());
-    }
-
-    function isStaffSelf(id) {
-      return signedIn() &&
-        (email() == idEmail(id) || resource.data.email == email());
+        (isStaff() && get(/databases/$(database)/documents/staff/$(email())).data.role == 'admin');
     }
 
     function onlyChanges(keys) {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    // البيانات العامة: قراءة لكل مسجّل، كتابة للمدير
-    match /colleges/{id}    { allow read: if signedIn(); allow write: if isAdmin(); }
-    match /departments/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
-    match /courses/{id}     { allow read: if signedIn(); allow write: if isAdmin(); }
-    match /settings/{id}    { allow read: if signedIn(); allow write: if isAdmin(); }
-    match /meta/{id}        { allow read: if signedIn(); allow write: if isAdmin(); }
+    // البيانات العامة: قراءة لكل منتسب، كتابة للمدير
+    match /colleges/{id}    { allow read: if isMember(); allow write: if isAdmin(); }
+    match /departments/{id} { allow read: if isMember(); allow write: if isAdmin(); }
+    match /courses/{id}     { allow read: if isMember(); allow write: if isAdmin(); }
+    match /settings/{id}    { allow read: if isMember(); allow write: if isAdmin(); }
+    match /meta/{id}        { allow read: if isMember(); allow write: if isAdmin(); }
 
     match /students/{id} {
-      allow read: if signedIn();
+      allow read: if isMember();
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() ||
-        // الطالب يفعّل حسابه أو يربط بريد Google بنفسه فقط
-        (signedIn() && email() == idEmail(id) && onlyChanges(['activated', 'email']));
+      // الدكتور يستطيع ربط بطاقة NFC بطالب أثناء المحاضرة
+      allow update: if isAdmin() || (isStaff() && onlyChanges(['nfcUid']));
     }
 
-    match /staff/{id} {
-      allow read: if signedIn();
-      allow create: if isAdmin() || (id == 'superadmin' && isSuperAdmin());
+    match /staff/{staffEmail} {
+      allow read: if isMember();
+      allow create: if isAdmin() || (staffEmail == email() && isSuperAdmin());
       allow delete: if isAdmin();
-      allow update: if isAdmin() ||
-        (isStaffSelf(id) && onlyChanges(['activated', 'email', 'courseIds']));
+      // الدكتور يعدّل قائمة مواده فقط
+      allow update: if isAdmin() || (staffEmail == email() && onlyChanges(['courseIds']));
     }
 
     match /sessions/{id} {
-      allow read: if signedIn();
-      allow create: if signedIn() && exists(/databases/$(database)/documents/staff/$(request.resource.data.doctorId));
-      allow update, delete: if isAdmin() ||
-        (signedIn() && (email() == idEmail(resource.data.doctorId) ||
-          staffDoc(resource.data.doctorId).email == email()));
+      allow read: if isMember();
+      allow create: if isStaff() && request.resource.data.doctorId == email();
+      allow update, delete: if isAdmin() || (isStaff() && resource.data.doctorId == email());
     }
 
     function isSessionOwner(sessionId) {
-      let doctorId = get(/databases/$(database)/documents/sessions/$(sessionId)).data.doctorId;
-      return signedIn() && (email() == idEmail(doctorId) || staffDoc(doctorId).email == email());
-    }
-
-    function isStudentSelf(studentId) {
-      return signedIn() && (email() == idEmail(studentId) ||
-        get(/databases/$(database)/documents/students/$(studentId)).data.email == email());
+      return isStaff() &&
+        get(/databases/$(database)/documents/sessions/$(sessionId)).data.doctorId == email();
     }
 
     match /attendance/{id} {
-      allow read: if signedIn();
-      // التسجيل مرة واحدة فقط (لا تعديل)، والمحاضرة يجب أن تكون جارية
-      // الطالب يسجّل نفسه فقط؛ الدكتور صاحب المحاضرة أو المدير يسجّل يدوياً
-      allow create: if signedIn() &&
-        id == request.resource.data.sessionId + '_' + request.resource.data.studentId &&
-        (isAdmin() || isSessionOwner(request.resource.data.sessionId) ||
-          (isStudentSelf(request.resource.data.studentId) &&
-           get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.active == true));
+      allow read: if isMember();
+      // يسجّل الحضور الدكتور صاحب المحاضرة أو المدير فقط (بمسح هوية الطالب أو NFC)
+      allow create: if (isAdmin() || isSessionOwner(request.resource.data.sessionId)) &&
+        id == request.resource.data.sessionId + '_' + request.resource.data.studentId;
       allow update: if false;
       allow delete: if isAdmin() || isSessionOwner(resource.data.sessionId);
     }

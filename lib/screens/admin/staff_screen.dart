@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
+import '../../config.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
@@ -43,13 +44,11 @@ class _StaffScreenState extends State<StaffScreen> {
   }
 
   Future<void> _edit([Staff? s]) async {
-    final id = TextEditingController(text: s?.id);
-    final name = TextEditingController(text: s?.name);
     final email = TextEditingController(text: s?.email);
+    final name = TextEditingController(text: s?.name);
     String role = s?.role ?? 'doctor';
     String? dept = s?.deptId;
     List<String> courseIds = [...?s?.courseIds];
-    bool activated = s?.activated ?? false;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -81,19 +80,13 @@ class _StaffScreenState extends State<StaffScreen> {
                         labelText: 'الاسم الكامل مع اللقب العلمي')),
                 const SizedBox(height: 10),
                 TextField(
-                    controller: id,
-                    enabled: s == null,
-                    textDirection: TextDirection.ltr,
-                    decoration: const InputDecoration(
-                        labelText: 'الرقم الوظيفي (للدخول)',
-                        hintText: 'مثال: D1002')),
-                const SizedBox(height: 10),
-                TextField(
                     controller: email,
+                    enabled: s == null,
                     keyboardType: TextInputType.emailAddress,
                     textDirection: TextDirection.ltr,
                     decoration: const InputDecoration(
-                        labelText: 'بريد Google (للدخول بـ Google)')),
+                        labelText: 'البريد الجامعي (للدخول)',
+                        hintText: 'name@${AppConfig.universityDomain}')),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String?>(
                   value: dept,
@@ -127,13 +120,6 @@ class _StaffScreenState extends State<StaffScreen> {
                     label: Text('المواد المسندة (${courseIds.length})'),
                   ),
                 ],
-                if (s != null)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    value: activated,
-                    onChanged: (v) => setD(() => activated = v),
-                    title: const Text('الحساب مفعّل'),
-                  ),
               ],
             ),
           ),
@@ -149,30 +135,34 @@ class _StaffScreenState extends State<StaffScreen> {
       ),
     );
     if (ok != true || !mounted) return;
-    if (id.text.trim().isEmpty || name.text.trim().isEmpty) {
-      showSnack(context, 'أدخل الاسم والرقم الوظيفي', error: true);
-      return;
-    }
-    if (s == null && _staff.any((x) => x.id == id.text.trim())) {
-      showSnack(context, 'هذا الرقم مستخدم مسبقاً', error: true);
-      return;
-    }
     final e = email.text.trim().toLowerCase();
+    if (e.isEmpty || name.text.trim().isEmpty) {
+      showSnack(context, 'أدخل الاسم والبريد الجامعي', error: true);
+      return;
+    }
+    if (!AppConfig.isAllowedEmail(e)) {
+      showSnack(context,
+          'يجب أن يكون البريد جامعياً (@${AppConfig.universityDomain})',
+          error: true);
+      return;
+    }
+    if (s == null && _staff.any((x) => x.id == e)) {
+      showSnack(context, 'هذا البريد مضاف مسبقاً', error: true);
+      return;
+    }
     final staff = Staff(
-      id: id.text.trim(),
+      id: e,
       name: name.text.trim(),
       role: role,
-      email: e.isEmpty ? null : e,
       deptId: dept,
       courseIds: role == 'doctor' ? courseIds : const [],
-      activated: activated,
     );
     await runBusy(context, () => repo.saveStaff(staff), success: 'تم الحفظ');
     _load();
   }
 
   Future<void> _delete(Staff s) async {
-    if (s.id == AppState.user.value?.id) {
+    if (s.id == AppState.user.value?.staff?.id) {
       showSnack(context, 'لا يمكنك حذف حسابك', error: true);
       return;
     }
@@ -230,7 +220,7 @@ class _StaffScreenState extends State<StaffScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${s.isAdmin ? 'مدير' : 'دكتور'} • ${s.id}${s.email != null ? ' • ${s.email}' : ''}',
+            Text('${s.isAdmin ? 'مدير' : 'دكتور'} • ${s.email}',
                 style: const TextStyle(fontSize: 12)),
             if (!s.isAdmin)
               Text(

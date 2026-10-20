@@ -19,11 +19,10 @@ class LocalRepo implements Repo {
   final Map<String, Staff> _staff = {};
   final Map<String, LectureSession> _sessions = {};
   final Map<String, AttendanceRecord> _attendance = {};
-  final Map<String, String> _passwords = {}; // id -> hash
   AppSettings _settings = const AppSettings();
-  String? _currentId;
+  String? _currentEmail;
 
-  static const _key = 'almaqal_local_db_v1';
+  static const _key = 'almaqal_local_db_v2';
 
   @override
   bool get isDemo => true;
@@ -65,10 +64,9 @@ class LocalRepo implements Repo {
       final a = AttendanceRecord.fromMap(mp(e));
       _attendance[a.id] = a;
     }
-    (m['passwords'] as Map? ?? {}).forEach((k, v) => _passwords['$k'] = '$v');
     _settings = AppSettings.fromMap(
         m['settings'] == null ? null : mp(m['settings']));
-    _currentId = m['currentId'] as String?;
+    _currentEmail = m['currentEmail'] as String?;
   }
 
   Future<void> _save() async {
@@ -80,9 +78,8 @@ class LocalRepo implements Repo {
       'staff': _staff.values.map((e) => e.toMap()).toList(),
       'sessions': _sessions.values.map((e) => e.toMap()).toList(),
       'attendance': _attendance.values.map((e) => e.toMap()).toList(),
-      'passwords': _passwords,
       'settings': _settings.toMap(),
-      'currentId': _currentId,
+      'currentEmail': _currentEmail,
     };
     await _prefs.setString(_key, jsonEncode(m));
     _changes.add(null);
@@ -102,136 +99,68 @@ class LocalRepo implements Repo {
     for (final s in d.students) {
       _students[s.id] = s;
     }
-    _staff[AppConfig.demoAdminId] = Staff(
-        id: AppConfig.demoAdminId,
-        name: 'مدير النظام',
-        role: 'admin',
-        email: AppConfig.superAdminEmails.isEmpty
-            ? null
-            : AppConfig.superAdminEmails.first,
-        activated: true);
-    _passwords[AppConfig.demoAdminId] =
-        hashPassword(AppConfig.demoAdminId, AppConfig.demoAdminPassword);
+    final admin = Staff(
+        id: AppConfig.demoAdminEmail, name: 'مدير النظام', role: 'admin');
+    _staff[admin.id] = admin;
+    for (final e in AppConfig.superAdminEmails) {
+      _staff[e] = Staff(id: e, name: 'مدير النظام', role: 'admin');
+    }
     final demoCourses = d.courses
         .where((c) => c.deptId == 'ai' && (c.stage == 2 || c.stage == 3))
         .map((c) => c.id)
         .toList();
-    _staff[AppConfig.demoDoctorId] = Staff(
-        id: AppConfig.demoDoctorId,
+    final doc = Staff(
+        id: AppConfig.demoDoctorEmail,
         name: 'د. حساب تجريبي',
         role: 'doctor',
         deptId: 'ai',
-        courseIds: demoCourses,
-        activated: true);
-    _passwords[AppConfig.demoDoctorId] =
-        hashPassword(AppConfig.demoDoctorId, AppConfig.demoDoctorPassword);
+        courseIds: demoCourses);
+    _staff[doc.id] = doc;
     await _save();
   }
 
-  AppUser _userFor(String id) {
-    final st = _staff[id];
+  /// يجد المستخدم بالبريد: الكادر أولاً، ثم الطلاب (بحقل البريد أو <الرقم>@النطاق).
+  AppUser? _userByEmail(String email) {
+    final e = email.trim().toLowerCase();
+    final st = _staff[e];
     if (st != null) return AppUser.staff(st);
-    final s = _students[id];
-    if (s != null) return AppUser.student(s);
-    throw AppException('الحساب غير موجود');
+    for (final s in _students.values) {
+      if (s.email == e) return AppUser.student(s);
+    }
+    final local = e.split('@').first;
+    if (AppConfig.isUniversityEmail(e)) {
+      final s = _students[local];
+      if (s != null && s.email == null) return AppUser.student(s);
+    }
+    return null;
   }
 
   // ---------------- الحساب ----------------
   @override
   Future<AppUser?> restoreSession() async {
-    final id = _currentId;
-    if (id == null) return null;
-    try {
-      return _userFor(id);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  @override
-  Future<AppUser> signInWithId(String id, String password) async {
-    id = id.trim();
-    final user = _userFor(id);
-    final activated = user.student?.activated ?? user.staff!.activated;
-    if (!activated || !_passwords.containsKey(id)) {
-      throw AppException('الحساب غير مفعّل بعد. اضغط "تفعيل حساب جديد" أولاً');
-    }
-    if (_passwords[id] != hashPassword(id, password)) {
-      throw AppException('كلمة المرور غير صحيحة');
-    }
-    _currentId = id;
-    await _save();
-    return user;
-  }
-
-  @override
-  Future<AppUser> activateAccount(String id, String newPassword) async {
-    id = id.trim();
-    final user = _userFor(id);
-    final activated = user.student?.activated ?? user.staff!.activated;
-    if (activated) {
-      throw AppException('هذا الحساب مفعّل مسبقاً، سجّل الدخول بكلمة المرور');
-    }
-    _passwords[id] = hashPassword(id, newPassword);
-    if (user.student != null) {
-      _students[id] = user.student!.copyWith(activated: true);
-    } else {
-      _staff[id] = user.staff!.copyWith(activated: true);
-    }
-    _currentId = id;
-    await _save();
-    return _userFor(id);
+    final e = _currentEmail;
+    if (e == null) return null;
+    return _userByEmail(e);
   }
 
   @override
   Future<AppUser> signInWithGoogle({String? demoEmail}) async {
     final email = (demoEmail ?? '').trim().toLowerCase();
-    if (email.isEmpty) throw AppException('أدخل البريد الإلكتروني');
-    for (final s in _staff.values) {
-      if (s.email == email) {
-        _currentId = s.id;
-        await _save();
-        return AppUser.staff(s);
-      }
+    if (email.isEmpty) throw AppException('أدخل البريد الجامعي');
+    if (!AppConfig.isAllowedEmail(email)) {
+      throw AppException(
+          'يُقبل البريد الجامعي الرسمي فقط (@${AppConfig.universityDomain})');
     }
-    for (final s in _students.values) {
-      if (s.email == email) {
-        _currentId = s.id;
-        await _save();
-        return AppUser.student(s);
-      }
-    }
-    throw NotLinkedException(email);
-  }
-
-  @override
-  Future<AppUser> linkGoogleWithId(
-      String googleEmail, String id, String password) async {
-    final user = await signInWithId(id, password);
-    final email = googleEmail.toLowerCase();
-    if (user.student != null) {
-      _students[user.id] = user.student!.copyWith(email: email);
-    } else {
-      _staff[user.id] = user.staff!.copyWith(email: email);
-    }
+    final u = _userByEmail(email);
+    if (u == null) throw NotRegisteredException(email);
+    _currentEmail = email;
     await _save();
-    return _userFor(user.id);
-  }
-
-  @override
-  Future<void> changePassword(String oldPassword, String newPassword) async {
-    final id = _currentId;
-    if (id == null) throw AppException('لم يتم تسجيل الدخول');
-    if (_passwords[id] != hashPassword(id, oldPassword)) {
-      throw AppException('كلمة المرور الحالية غير صحيحة');
-    }
-    _passwords[id] = hashPassword(id, newPassword);
-    await _save();
+    return u;
   }
 
   @override
   Future<void> signOut() async {
-    _currentId = null;
+    _currentEmail = null;
     await _save();
   }
 
@@ -253,7 +182,15 @@ class LocalRepo implements Repo {
       _courses.putIfAbsent(c.id, () => c);
     }
     for (final s in d.students) {
-      _students.putIfAbsent(s.id, () => s);
+      final old = _students[s.id];
+      _students[s.id] = old == null
+          ? s
+          : old.copyWith(
+              name: s.name,
+              stage: s.stage,
+              shift: s.shift,
+              deptId: s.deptId ?? old.deptId,
+              email: s.email ?? old.email);
     }
     await _save();
     onProgress('تمت التهيئة');
@@ -307,6 +244,20 @@ class LocalRepo implements Repo {
   Future<List<Student>> students() async => _students.values.toList();
   @override
   Future<Student?> student(String id) async => _students[id];
+
+  @override
+  Future<Student?> studentByEmail(String email) async =>
+      _userByEmail(email)?.student;
+
+  @override
+  Future<Student?> studentByNfc(String uid) async {
+    final u = uid.toUpperCase();
+    for (final s in _students.values) {
+      if (s.nfcUid == u) return s;
+    }
+    return null;
+  }
+
   @override
   Future<void> saveStudent(Student s) async {
     _students[s.id] = s;
@@ -316,7 +267,6 @@ class LocalRepo implements Repo {
   @override
   Future<void> deleteStudent(String id) async {
     _students.remove(id);
-    _passwords.remove(id);
     await _save();
   }
 
@@ -328,6 +278,21 @@ class LocalRepo implements Repo {
         _students[id] = s.copyWith(deptId: deptId, clearDept: deptId == null);
       }
     }
+    await _save();
+  }
+
+  @override
+  Future<void> setStudentNfc(String studentId, String? uid) async {
+    final s = _students[studentId];
+    if (s == null) throw AppException('الطالب غير موجود');
+    if (uid != null) {
+      final other = await studentByNfc(uid);
+      if (other != null && other.id != studentId) {
+        throw AppException('هذه البطاقة مرتبطة بالطالب ${other.name}');
+      }
+    }
+    _students[studentId] = s.copyWith(
+        nfcUid: uid?.toUpperCase(), clearNfc: uid == null);
     await _save();
   }
 
@@ -343,7 +308,6 @@ class LocalRepo implements Repo {
   @override
   Future<void> deleteStaff(String id) async {
     _staff.remove(id);
-    _passwords.remove(id);
     await _save();
   }
 
@@ -386,14 +350,6 @@ class LocalRepo implements Repo {
   Future<LectureSession?> session(String id) async => _sessions[id];
 
   @override
-  Stream<LectureSession?> watchSession(String id) async* {
-    yield _sessions[id];
-    await for (final _ in _changes.stream) {
-      yield _sessions[id];
-    }
-  }
-
-  @override
   Future<List<LectureSession>> sessionsForCourse(String courseId) async =>
       _sessions.values.where((s) => s.courseId == courseId).toList()
         ..sort((a, b) => b.startedAt.compareTo(a.startedAt));
@@ -433,7 +389,7 @@ class LocalRepo implements Repo {
   @override
   Future<void> markAttendance(AttendanceRecord r) async {
     if (_attendance.containsKey(r.id)) {
-      throw AppException('تم تسجيل حضورك في هذه المحاضرة مسبقاً');
+      throw AppException('${r.studentName} مسجّل حضوره مسبقاً');
     }
     _attendance[r.id] = r;
     await _save();

@@ -5,7 +5,7 @@ import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 
-/// نافذة الملف الشخصي وتغيير كلمة المرور.
+/// نافذة الملف الشخصي.
 Future<void> showProfileSheet(BuildContext context) {
   final u = AppState.user.value!;
   final roleName = switch (u.role) {
@@ -51,22 +51,22 @@ Future<void> showProfileSheet(BuildContext context) {
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             Center(child: Pill(roleName)),
             const SizedBox(height: 16),
-            _row(Icons.badge_outlined, 'الرقم', u.id),
-            _row(Icons.alternate_email, 'Google', u.email ?? 'غير مرتبط'),
+            _row(Icons.alternate_email, 'البريد', u.email ?? '—'),
             if (u.student != null) ...[
+              _row(Icons.badge_outlined, 'الرقم المعرفي', u.student!.id),
               _row(Icons.stairs_outlined, 'المرحلة',
                   stageName(u.student!.stage)),
               _row(Icons.wb_sunny_outlined, 'الدوام',
                   shiftName(u.student!.shift)),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.pop(c);
-                _changePassword(context);
+                logout(context);
               },
-              icon: const Icon(Icons.password),
-              label: const Text('تغيير كلمة المرور'),
+              icon: const Icon(Icons.logout),
+              label: const Text('تسجيل الخروج'),
             ),
           ],
         ),
@@ -90,44 +90,3 @@ Widget _row(IconData i, String k, String v) => Padding(
         ],
       ),
     );
-
-Future<void> _changePassword(BuildContext context) async {
-  final oldPw = TextEditingController();
-  final newPw = TextEditingController();
-  final ok = await showDialog<bool>(
-    context: context,
-    builder: (c) => AlertDialog(
-      title: const Text('تغيير كلمة المرور'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          TextField(
-              controller: oldPw,
-              obscureText: true,
-              decoration:
-                  const InputDecoration(labelText: 'كلمة المرور الحالية')),
-          const SizedBox(height: 10),
-          TextField(
-              controller: newPw,
-              obscureText: true,
-              decoration: const InputDecoration(
-                  labelText: 'كلمة المرور الجديدة (6 أحرف فأكثر)')),
-        ],
-      ),
-      actions: [
-        TextButton(
-            onPressed: () => Navigator.pop(c, false),
-            child: const Text('إلغاء')),
-        FilledButton(
-            onPressed: () => Navigator.pop(c, true), child: const Text('حفظ')),
-      ],
-    ),
-  );
-  if (ok != true || !context.mounted) return;
-  if (newPw.text.length < 6) {
-    showSnack(context, 'كلمة المرور قصيرة', error: true);
-    return;
-  }
-  await runBusy(context, () => repo.changePassword(oldPw.text, newPw.text),
-      success: 'تم تغيير كلمة المرور');
-}
