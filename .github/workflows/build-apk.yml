@@ -1,4 +1,4 @@
-name: Build APK
+name: بناء ملف APK
 
 on:
   push:
@@ -26,21 +26,45 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Prepare Android files
+      - name: تجهيز ملفات Android
         run: bash ci/prepare_android.sh
 
-      - name: Fixed signing key (needed for Google Sign-In)
+      - name: مفتاح توقيع ثابت (لازم لتسجيل الدخول بـ Google)
         run: |
           mkdir -p ~/.android
           cp ci/debug.keystore ~/.android/debug.keystore
 
-      - name: Get packages
+      - name: مرآة Maven (تجنّب خطأ 429 Too Many Requests)
+        run: |
+          mkdir -p ~/.gradle/init.d
+          cat > ~/.gradle/init.d/mirror.gradle <<'EOF'
+          def mirrors = ['https://maven-central.storage-download.googleapis.com/maven2/', 'https://dl.google.com/dl/android/maven2/']
+          beforeSettings { settings ->
+            settings.pluginManagement.repositories { mirrors.each { m -> maven { url m } } }
+          }
+          allprojects {
+            buildscript { repositories { mirrors.each { m -> maven { url m } } } }
+            repositories { mirrors.each { m -> maven { url m } } }
+          }
+          EOF
+          cat ~/.gradle/init.d/mirror.gradle
+
+      - name: ذاكرة Gradle المؤقتة
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('pubspec.yaml') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: تنزيل الحزم
         run: flutter pub get
 
-      - name: App icon
+      - name: أيقونة التطبيق
         run: dart run flutter_launcher_icons
 
-      - name: Build APK
+      - name: بناء APK
         env:
           FB_API_KEY: ${{ secrets.FB_API_KEY }}
           FB_APP_ID: ${{ secrets.FB_APP_ID }}
@@ -49,28 +73,36 @@ jobs:
           FB_STORAGE_BUCKET: ${{ secrets.FB_STORAGE_BUCKET }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
         run: |
-          flutter build apk --release \
-            --dart-define=FB_API_KEY="$FB_API_KEY" \
-            --dart-define=FB_APP_ID="$FB_APP_ID" \
-            --dart-define=FB_SENDER_ID="$FB_SENDER_ID" \
-            --dart-define=FB_PROJECT_ID="$FB_PROJECT_ID" \
-            --dart-define=FB_STORAGE_BUCKET="$FB_STORAGE_BUCKET" \
-            --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID"
+          # إعادة المحاولة حتى 3 مرات في حال تعثّر التنزيل من الشبكة
+          for i in 1 2 3; do
+            if flutter build apk --release \
+              --dart-define=FB_API_KEY="$FB_API_KEY" \
+              --dart-define=FB_APP_ID="$FB_APP_ID" \
+              --dart-define=FB_SENDER_ID="$FB_SENDER_ID" \
+              --dart-define=FB_PROJECT_ID="$FB_PROJECT_ID" \
+              --dart-define=FB_STORAGE_BUCKET="$FB_STORAGE_BUCKET" \
+              --dart-define=GOOGLE_WEB_CLIENT_ID="$GOOGLE_WEB_CLIENT_ID"; then
+              break
+            fi
+            if [ "$i" = 3 ]; then exit 1; fi
+            echo "فشلت المحاولة $i، إعادة بعد 60 ثانية..."
+            sleep 60
+          done
           mkdir -p dist
           if [ -n "$FB_API_KEY" ]; then MODE=firebase; else MODE=demo; fi
           cp build/app/outputs/flutter-apk/app-release.apk "dist/almaqal-attendance-${MODE}.apk"
           ls -la dist
 
-      - name: Upload artifact
+      - name: رفع الملف كـ Artifact
         uses: actions/upload-artifact@v4
         with:
           name: almaqal-attendance-apk
           path: dist/*.apk
 
-      - name: Publish release
+      - name: نشر الإصدار للتنزيل المباشر من الهاتف
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          name: Build ${{ github.run_number }}
-          body: Almaqal University attendance app APK.
+          name: نسخة رقم ${{ github.run_number }}
+          body: ملف APK لتطبيق الحضور والغياب - جامعة المعقل الأهلية.
           files: dist/*.apk
