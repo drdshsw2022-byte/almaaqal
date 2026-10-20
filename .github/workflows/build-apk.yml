@@ -34,20 +34,17 @@ jobs:
           mkdir -p ~/.android
           cp ci/debug.keystore ~/.android/debug.keystore
 
-      - name: مرآة Maven (تجنّب خطأ 429 Too Many Requests)
+      - name: إعدادات Gradle لتحمّل ازدحام الشبكة (خطأ 429)
         run: |
-          mkdir -p ~/.gradle/init.d
-          cat > ~/.gradle/init.d/mirror.gradle <<'EOF'
-          def mirrors = ['https://maven-central.storage-download.googleapis.com/maven2/', 'https://dl.google.com/dl/android/maven2/']
-          beforeSettings { settings ->
-            settings.pluginManagement.repositories { mirrors.each { m -> maven { url m } } }
-          }
-          allprojects {
-            buildscript { repositories { mirrors.each { m -> maven { url m } } } }
-            repositories { mirrors.each { m -> maven { url m } } }
-          }
+          mkdir -p ~/.gradle
+          rm -f ~/.gradle/init.d/mirror.gradle
+          cat >> ~/.gradle/gradle.properties <<'EOF'
+          org.gradle.internal.repository.max.retries=10
+          org.gradle.internal.repository.initial.backoff=3000
+          org.gradle.internal.http.connectionTimeout=120000
+          org.gradle.internal.http.socketTimeout=120000
           EOF
-          cat ~/.gradle/init.d/mirror.gradle
+          cat ~/.gradle/gradle.properties
 
       - name: ذاكرة Gradle المؤقتة
         uses: actions/cache@v4
@@ -85,8 +82,8 @@ jobs:
               break
             fi
             if [ "$i" = 3 ]; then exit 1; fi
-            echo "فشلت المحاولة $i، إعادة بعد 60 ثانية..."
-            sleep 60
+            echo "فشلت المحاولة $i، إعادة بعد دقيقتين..."
+            sleep 120
           done
           mkdir -p dist
           if [ -n "$FB_API_KEY" ]; then MODE=firebase; else MODE=demo; fi
