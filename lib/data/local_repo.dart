@@ -19,10 +19,15 @@ class LocalRepo implements Repo {
   final Map<String, Staff> _staff = {};
   final Map<String, LectureSession> _sessions = {};
   final Map<String, AttendanceRecord> _attendance = {};
+  final Map<String, GradeScheme> _schemes = {};
+  final Map<String, GradeRecord> _grades = {};
+  final Map<String, Lesson> _lessons = {};
+  final Map<String, String> _passwords = {}; // المفتاح: رقم الطالب أو بريد الكادر
   AppSettings _settings = const AppSettings();
-  String? _currentEmail;
+  String? _currentEmail; // بريد أو "student:<id>"
+  bool _usedInitial = false;
 
-  static const _key = 'almaqal_local_db_v3';
+  static const _key = 'almaqal_local_db_v4';
 
   @override
   bool get isDemo => true;
@@ -64,9 +69,23 @@ class LocalRepo implements Repo {
       final a = AttendanceRecord.fromMap(mp(e));
       _attendance[a.id] = a;
     }
+    for (final e in (m['schemes'] as List? ?? [])) {
+      final x = mp(e);
+      _schemes['${x['courseId']}'] = GradeScheme.fromMap('${x['courseId']}', x);
+    }
+    for (final e in (m['grades'] as List? ?? [])) {
+      final g = GradeRecord.fromMap(mp(e));
+      _grades[g.id] = g;
+    }
+    for (final e in (m['lessons'] as List? ?? [])) {
+      final l = Lesson.fromMap(mp(e));
+      _lessons[l.id] = l;
+    }
+    (m['passwords'] as Map? ?? {}).forEach((k, v) => _passwords['$k'] = '$v');
     _settings = AppSettings.fromMap(
         m['settings'] == null ? null : mp(m['settings']));
     _currentEmail = m['currentEmail'] as String?;
+    _usedInitial = m['usedInitial'] == true;
   }
 
   Future<void> _save() async {
@@ -78,8 +97,13 @@ class LocalRepo implements Repo {
       'staff': _staff.values.map((e) => e.toMap()).toList(),
       'sessions': _sessions.values.map((e) => e.toMap()).toList(),
       'attendance': _attendance.values.map((e) => e.toMap()).toList(),
+      'schemes': _schemes.values.map((e) => e.toMap()).toList(),
+      'grades': _grades.values.map((e) => e.toMap()).toList(),
+      'lessons': _lessons.values.map((e) => e.toMap()).toList(),
+      'passwords': _passwords,
       'settings': _settings.toMap(),
       'currentEmail': _currentEmail,
+      'usedInitial': _usedInitial,
     };
     await _prefs.setString(_key, jsonEncode(m));
     _changes.add(null);
@@ -159,7 +183,118 @@ class LocalRepo implements Repo {
   Future<AppUser?> restoreSession() async {
     final e = _currentEmail;
     if (e == null) return null;
+    if (e.startsWith('student:')) {
+      final s = _students[e.substring(8)];
+      return s == null ? null : AppUser.student(s);
+    }
     return _userByEmail(e);
+  }
+
+  String _acctKey(AppUser u) => u.student?.id ?? u.staff!.id;
+  String _uname(AppUser u) => u.student?.id ?? u.staff!.username;
+
+  bool _isBootstrap(AppUser u) =>
+      u.staff?.id ==
+      '${AppConfig.bootstrapAdminUsername}@${AppConfig.universityDomain}';
+
+  @override
+  Future<LoginResult> signInWithPassword(String username, String password) async {
+    final r = resolveUsername(username);
+    AppUser? u;
+    if (r.studentId != null) {
+      final s = _students[r.studentId];
+      if (s != null) u = AppUser.student(s);
+    } else if (r.staffEmail != null) {
+      final st = _staff[r.staffEmail];
+      if (st != null) u = AppUser.staff(st);
+    }
+    if (u == null) throw AppException('اسم المستخدم غير موجود');
+    final key = _acctKey(u);
+    final stored = _passwords[key];
+    bool initial = false;
+    if (stored != null) {
+      if (stored != hashPassword(_uname(u), password)) {
+        throw AppException('كلمة المرور غير صحيحة');
+      }
+    } else {
+      final ok = _isBootstrap(u)
+          ? password == AppConfig.bootstrapAdminPassword
+          : checkInitialPassword(
+              username: _uname(u),
+              initPw: u.student?.initPw ?? u.staff?.initPw,
+              password: password,
+              isStaff: u.staff != null);
+      if (!ok) throw AppException('كلمة المرور غير صحيحة');
+      initial = true;
+    }
+    _currentEmail = u.student != null ? 'student:${u.student!.id}' : u.staff!.id;
+    _usedInitial = initial;
+    await _save();
+    return LoginResult(u, mustChangePassword: initial);
+  }
+
+  @override
+  Future<bool> needsPasswordChange() async => _usedInitial;
+
+  @override
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final u = await restoreSession();
+    if (u == null) throw AppException('لم يتم تسجيل الدخول');
+    final key = _acctKey(u);
+    final stored = _passwords[key];
+    final okOld = stored != null
+        ? stored == hashPassword(_uname(u), oldPassword)
+        : (_isBootstrap(u)
+            ? oldPassword == AppConfig.bootstrapAdminPassword
+            : checkInitialPassword(
+                username: _uname(u),
+                initPw: u.student?.initPw ?? u.staff?.initPw,
+                password: oldPassword,
+                isStaff: u.staff != null));
+    if (!okOld) throw AppException('كلمة المرور الحالية غير صحيحة');
+    _passwords[key] = hashPassword(_uname(u), newPassword);
+    if (u.student != null) {
+      _students[key] = u.student!.copyWith(activated: true);
+    } else {
+      _staff[key] = u.staff!.copyWith(activated: true);
+    }
+    _usedInitial = false;
+    await _save();
+  }
+
+  @override
+  Future<void> resetStudentAccount(String studentId, {String? initPw}) async {
+    final s = _students[studentId];
+    if (s == null) return;
+    _passwords.remove(studentId);
+    _students[studentId] = Student(
+        id: s.id,
+        name: s.name,
+        stage: s.stage,
+        shift: s.shift,
+        deptId: s.deptId,
+        email: s.email,
+        nfcUid: s.nfcUid,
+        activated: false,
+        initPw: initPw == null ? null : hashPassword(studentId, initPw));
+    await _save();
+  }
+
+  @override
+  Future<void> resetStaffAccount(String staffId, {String? initPw}) async {
+    final s = _staff[staffId];
+    if (s == null) return;
+    _passwords.remove(staffId);
+    _staff[staffId] = Staff(
+        id: s.id,
+        name: s.name,
+        role: s.role,
+        collegeId: s.collegeId,
+        deptId: s.deptId,
+        courseIds: s.courseIds,
+        activated: false,
+        initPw: initPw == null ? null : hashPassword(s.username, initPw));
+    await _save();
   }
 
   @override
@@ -180,6 +315,7 @@ class LocalRepo implements Repo {
   @override
   Future<void> signOut() async {
     _currentEmail = null;
+    _usedInitial = false;
     await _save();
   }
 
@@ -434,6 +570,63 @@ class LocalRepo implements Repo {
     for (final s in list) {
       _staff[s.id] = s;
     }
+    await _save();
+  }
+
+  @override
+  Future<GradeScheme> scheme(String courseId) async =>
+      _schemes[courseId] ?? GradeScheme(courseId: courseId);
+
+  @override
+  Future<void> saveScheme(GradeScheme s) async {
+    _schemes[s.courseId] = s;
+    await _save();
+  }
+
+  @override
+  Future<List<GradeRecord>> gradesForCourse(String courseId) async =>
+      _grades.values.where((g) => g.courseId == courseId).toList();
+
+  @override
+  Future<List<GradeRecord>> gradesForStudent(String studentId) async =>
+      _grades.values.where((g) => g.studentId == studentId).toList();
+
+  @override
+  Future<void> saveGradesBulk(List<GradeRecord> list) async {
+    for (final g in list) {
+      _grades[g.id] = g;
+    }
+    await _save();
+  }
+
+  @override
+  Future<List<Lesson>> lessonsForCourse(String courseId) async =>
+      _lessons.values.where((l) => l.courseId == courseId).toList()
+        ..sort((a, b) => a.week != b.week
+            ? a.week.compareTo(b.week)
+            : a.date.compareTo(b.date));
+
+  @override
+  Future<Lesson> saveLesson(Lesson l) async {
+    final x = l.id.isEmpty
+        ? Lesson(
+            id: 'L${DateTime.now().microsecondsSinceEpoch}',
+            courseId: l.courseId,
+            title: l.title,
+            week: l.week,
+            description: l.description,
+            link: l.link,
+            date: l.date,
+            by: l.by)
+        : l;
+    _lessons[x.id] = x;
+    await _save();
+    return x;
+  }
+
+  @override
+  Future<void> deleteLesson(String id) async {
+    _lessons.remove(id);
     await _save();
   }
 

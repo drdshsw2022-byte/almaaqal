@@ -36,7 +36,7 @@ python3 - "$MANIFEST" <<'PY'
 import re, sys
 p = sys.argv[1]
 s = open(p, encoding='utf-8').read()
-s = re.sub(r'android:label="[^"]*"', 'android:label="حضور المعقل"', s, count=1)
+s = re.sub(r'android:label="[^"]*"', 'android:label="جامعة المعقل"', s, count=1)
 perms = [
     '<uses-permission android:name="android.permission.INTERNET"/>',
     '<uses-permission android:name="android.permission.CAMERA"/>',
@@ -61,6 +61,17 @@ service = '''
                 android:resource="@xml/apduservice"/>
         </service>
     '''
+# فتح الروابط (الدروس) عبر url_launcher على Android 11+
+https_intent = '''
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:scheme="https"/>
+        </intent>'''
+if 'android:scheme="https"' not in s:
+    if '<queries>' in s:
+        s = s.replace('<queries>', '<queries>' + https_intent, 1)
+    else:
+        s = s.replace('</manifest>', '    <queries>' + https_intent + '\n    </queries>\n</manifest>')
 if 'StudentHceService' not in s:
     i = s.rindex('</application>')
     s = s[:i] + service + s[i:]

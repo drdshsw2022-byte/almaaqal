@@ -153,6 +153,8 @@ class Student {
   final String? deptId;
   final String? email; // البريد الجامعي الرسمي
   final String? nfcUid; // معرّف شريحة NFC في الهوية الجامعية
+  final bool activated; // سجّل الدخول وغيّر كلمة المرور الأولية
+  final String? initPw; // بصمة كلمة المرور الأولية (إن حددها المدير)
 
   Student({
     required this.id,
@@ -162,6 +164,8 @@ class Student {
     this.deptId,
     this.email,
     this.nfcUid,
+    this.activated = false,
+    this.initPw,
   });
 
   Student copyWith({
@@ -174,6 +178,8 @@ class Student {
     bool clearEmail = false,
     String? nfcUid,
     bool clearNfc = false,
+    bool? activated,
+    String? initPw,
   }) =>
       Student(
         id: id,
@@ -183,6 +189,8 @@ class Student {
         deptId: clearDept ? null : (deptId ?? this.deptId),
         email: clearEmail ? null : (email ?? this.email),
         nfcUid: clearNfc ? null : (nfcUid ?? this.nfcUid),
+        activated: activated ?? this.activated,
+        initPw: initPw ?? this.initPw,
       );
 
   Map<String, dynamic> toMap() => {
@@ -193,6 +201,8 @@ class Student {
         'deptId': deptId,
         'email': email,
         'nfcUid': nfcUid,
+        'activated': activated,
+        'initPw': initPw,
       };
 
   factory Student.fromMap(Map<String, dynamic> m) => Student(
@@ -203,6 +213,8 @@ class Student {
         deptId: asStrOrNull(m['deptId']),
         email: asStrOrNull(m['email'])?.toLowerCase(),
         nfcUid: asStrOrNull(m['nfcUid'])?.toUpperCase(),
+        activated: m['activated'] == true,
+        initPw: asStrOrNull(m['initPw']),
       );
 }
 
@@ -214,6 +226,8 @@ class Staff {
   final String? collegeId; // للعميد
   final String? deptId; // لرئيس القسم والتدريسي
   final List<String> courseIds;
+  final bool activated;
+  final String? initPw;
 
   Staff({
     required String id,
@@ -222,7 +236,12 @@ class Staff {
     this.collegeId,
     this.deptId,
     this.courseIds = const [],
+    this.activated = false,
+    this.initPw,
   }) : id = id.trim().toLowerCase();
+
+  /// اسم المستخدم = الجزء قبل @ من البريد الجامعي.
+  String get username => id.split('@').first;
 
   bool get isAdmin => role == 'admin';
   Role get roleEnum => roleFrom(role);
@@ -234,6 +253,8 @@ class Staff {
     String? collegeId,
     String? deptId,
     List<String>? courseIds,
+    bool? activated,
+    String? initPw,
   }) =>
       Staff(
         id: id,
@@ -242,6 +263,8 @@ class Staff {
         collegeId: collegeId ?? this.collegeId,
         deptId: deptId ?? this.deptId,
         courseIds: courseIds ?? this.courseIds,
+        activated: activated ?? this.activated,
+        initPw: initPw ?? this.initPw,
       );
 
   Map<String, dynamic> toMap() => {
@@ -252,6 +275,8 @@ class Staff {
         'collegeId': collegeId,
         'deptId': deptId,
         'courseIds': courseIds,
+        'activated': activated,
+        'initPw': initPw,
       };
 
   factory Staff.fromMap(Map<String, dynamic> m) => Staff(
@@ -261,6 +286,8 @@ class Staff {
         collegeId: asStrOrNull(m['collegeId']),
         deptId: asStrOrNull(m['deptId']),
         courseIds: asStrList(m['courseIds']),
+        activated: m['activated'] == true,
+        initPw: asStrOrNull(m['initPw']),
       );
 }
 
@@ -461,5 +488,176 @@ class NotRegisteredException extends AppException {
 String methodName(String m) => switch (m) {
       'qr' => 'QR',
       'nfc' => 'NFC',
+      'id' => 'الرقم الجامعي',
       _ => 'يدوي',
     };
+
+/// نتيجة تسجيل الدخول.
+class LoginResult {
+  final AppUser user;
+  final bool mustChangePassword;
+  LoginResult(this.user, {this.mustChangePassword = false});
+}
+
+// ======================== الدرجات ========================
+
+/// مكوّنات الدرجة بالترتيب.
+const gradeComponents = ['quiz', 'assignment', 'lab', 'attendance', 'midterm', 'final'];
+
+const gradeComponentNames = {
+  'quiz': 'الاختبارات',
+  'assignment': 'الواجبات',
+  'lab': 'المختبر',
+  'attendance': 'الحضور',
+  'midterm': 'الامتحان الفصلي',
+  'final': 'الامتحان النهائي',
+};
+String componentName(String k) => gradeComponentNames[k] ?? k;
+
+/// الدرجات القصوى الافتراضية (40 سعي + 60 نهائي).
+const defaultMax = {
+  'quiz': 10.0,
+  'assignment': 5.0,
+  'lab': 10.0,
+  'attendance': 5.0,
+  'midterm': 10.0,
+  'final': 60.0,
+};
+
+/// توزيع درجات مادة + ما نُشر منها للطلبة.
+class GradeScheme {
+  final String courseId;
+  final Map<String, double> max;
+  final Set<String> published;
+  GradeScheme({required this.courseId, Map<String, double>? max, Set<String>? published})
+      : max = max ?? Map.of(defaultMax),
+        published = published ?? <String>{};
+
+  double get total =>
+      gradeComponents.fold<double>(0, (a, k) => a + (max[k] ?? 0));
+  List<String> get active => gradeComponents.where((k) => (max[k] ?? 0) > 0).toList();
+
+  Map<String, dynamic> toMap() => {
+        'id': courseId,
+        'courseId': courseId,
+        'max': max,
+        'published': published.toList(),
+      };
+
+  factory GradeScheme.fromMap(String courseId, Map<String, dynamic>? m) {
+    if (m == null) return GradeScheme(courseId: courseId);
+    final mx = <String, double>{};
+    (m['max'] as Map? ?? {}).forEach((k, v) => mx['$k'] = asDouble(v));
+    return GradeScheme(
+      courseId: courseId,
+      max: mx.isEmpty ? null : mx,
+      published: asStrList(m['published']).toSet(),
+    );
+  }
+}
+
+/// درجات طالب في مادة.
+class GradeRecord {
+  final String courseId;
+  final String studentId;
+  final String studentName;
+  final String? studentEmail;
+  final Map<String, double> marks;
+  final int updatedAt;
+
+  GradeRecord({
+    required this.courseId,
+    required this.studentId,
+    required this.studentName,
+    this.studentEmail,
+    Map<String, double>? marks,
+    int? updatedAt,
+  })  : marks = marks ?? {},
+        updatedAt = updatedAt ?? DateTime.now().millisecondsSinceEpoch;
+
+  String get id => '${courseId}_$studentId';
+
+  double totalOf(Iterable<String> comps) =>
+      comps.fold(0.0, (a, k) => a + (marks[k] ?? 0));
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'courseId': courseId,
+        'studentId': studentId,
+        'studentName': studentName,
+        'studentEmail': studentEmail,
+        'marks': marks,
+        'updatedAt': updatedAt,
+      };
+
+  factory GradeRecord.fromMap(Map<String, dynamic> m) {
+    final mk = <String, double>{};
+    (m['marks'] as Map? ?? {}).forEach((k, v) {
+      if (v != null) mk['$k'] = asDouble(v);
+    });
+    return GradeRecord(
+      courseId: '${m['courseId'] ?? ''}',
+      studentId: '${m['studentId'] ?? ''}',
+      studentName: '${m['studentName'] ?? ''}',
+      studentEmail: asStrOrNull(m['studentEmail']),
+      marks: mk,
+      updatedAt: asInt(m['updatedAt']),
+    );
+  }
+}
+
+/// التقدير حسب النظام العراقي.
+({String label, bool pass}) gradeLetter(double total) {
+  if (total >= 90) return (label: 'امتياز', pass: true);
+  if (total >= 80) return (label: 'جيد جداً', pass: true);
+  if (total >= 70) return (label: 'جيد', pass: true);
+  if (total >= 60) return (label: 'متوسط', pass: true);
+  if (total >= 50) return (label: 'مقبول', pass: true);
+  return (label: 'راسب', pass: false);
+}
+
+// ======================== الدروس ========================
+
+class Lesson {
+  final String id;
+  final String courseId;
+  final String title;
+  final int week;
+  final String description;
+  final String? link;
+  final int date;
+  final String by;
+
+  Lesson({
+    required this.id,
+    required this.courseId,
+    required this.title,
+    this.week = 1,
+    this.description = '',
+    this.link,
+    int? date,
+    this.by = '',
+  }) : date = date ?? DateTime.now().millisecondsSinceEpoch;
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'courseId': courseId,
+        'title': title,
+        'week': week,
+        'description': description,
+        'link': link,
+        'date': date,
+        'by': by,
+      };
+
+  factory Lesson.fromMap(Map<String, dynamic> m) => Lesson(
+        id: '${m['id']}',
+        courseId: '${m['courseId'] ?? ''}',
+        title: '${m['title'] ?? ''}',
+        week: asInt(m['week'], 1),
+        description: '${m['description'] ?? ''}',
+        link: asStrOrNull(m['link']),
+        date: asInt(m['date']),
+        by: '${m['by'] ?? ''}',
+      );
+}

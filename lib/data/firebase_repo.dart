@@ -91,10 +91,170 @@ class FirebaseRepo implements Repo {
     final u = _auth.currentUser;
     if (u?.email == null) return null;
     try {
-      return await _profileByEmail(u!.email!);
+      return await _profileForAuthEmail(u!.email!);
     } catch (_) {
       return null;
     }
+  }
+
+  // ---------------- الدخول بكلمة المرور ----------------
+  static String _studentAuth(String id) => '$id@${AppConfig.studentAuthDomain}';
+  static String _staffAuth(String uniEmail) =>
+      '${uniEmail.split('@').first}@${AppConfig.staffAuthDomain}';
+  static String get _bootstrapEmail =>
+      '${AppConfig.bootstrapAdminUsername}@${AppConfig.universityDomain}';
+
+  /// يحمّل الملف حسب بريد المصادقة (داخلي أو بريد Google).
+  Future<AppUser?> _profileForAuthEmail(String authEmail) async {
+    final e = authEmail.toLowerCase();
+    final local = e.split('@').first;
+    if (e.endsWith('@${AppConfig.studentAuthDomain}')) {
+      final d = await _students.doc(local).get();
+      return d.exists ? AppUser.student(Student.fromMap(d.data()!)) : null;
+    }
+    if (e.endsWith('@${AppConfig.staffAuthDomain}')) {
+      final d = await _staff.doc('$local@${AppConfig.universityDomain}').get();
+      return d.exists ? AppUser.staff(Staff.fromMap(d.data()!)) : null;
+    }
+    return _profileByEmail(e);
+  }
+
+  bool _isWrongCreds(FirebaseAuthException e) => const [
+        'user-not-found',
+        'wrong-password',
+        'invalid-credential',
+        'invalid-login-credentials',
+        'INVALID_LOGIN_CREDENTIALS',
+      ].contains(e.code);
+
+  Future<void> _abort(String msg) async {
+    try {
+      await _auth.currentUser?.delete();
+    } catch (_) {}
+    await _auth.signOut();
+    throw AppException(msg);
+  }
+
+  @override
+  Future<LoginResult> signInWithPassword(String username, String password) async {
+    final r = resolveUsername(username);
+    if (r.studentId == null && r.staffEmail == null) {
+      throw AppException('أدخل اسم المستخدم');
+    }
+    if (r.staffEmail != null && !AppConfig.isUniversityEmail(r.staffEmail!)) {
+      throw AppException('اسم المستخدم يجب أن يكون من بريد الجامعة');
+    }
+    final authEmail =
+        r.studentId != null ? _studentAuth(r.studentId!) : _staffAuth(r.staffEmail!);
+    final uname = r.studentId ?? r.staffEmail!.split('@').first;
+    try {
+      await _auth.signInWithEmailAndPassword(email: authEmail, password: password);
+      final p = await _profileForAuthEmail(authEmail);
+      if (p == null) {
+        await _auth.signOut();
+        throw AppException('الحساب غير موجود في قاعدة البيانات');
+      }
+      final activated = p.student?.activated ?? p.staff!.activated;
+      return LoginResult(p, mustChangePassword: !activated);
+    } on FirebaseAuthException catch (e) {
+      if (!_isWrongCreds(e)) throw AppException(_authError(e));
+    }
+    // أول دخول: إنشاء الحساب بكلمة المرور الأولية ثم التحقق منها
+    try {
+      await _auth.createUserWithEmailAndPassword(email: authEmail, password: password);
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'email-already-in-use') {
+        throw AppException('كلمة المرور غير صحيحة');
+      }
+      if (e.code == 'weak-password') {
+        throw AppException('كلمة المرور غير صحيحة');
+      }
+      throw AppException(_authError(e));
+    }
+    final isBoot = r.staffEmail == _bootstrapEmail;
+    var p = await _profileForAuthEmail(authEmail);
+    if (p == null && isBoot && password == AppConfig.bootstrapAdminPassword) {
+      final admin = Staff(id: _bootstrapEmail, name: 'مدير النظام', role: 'admin');
+      await _staff.doc(admin.id).set(admin.toMap());
+      p = AppUser.staff(admin);
+    }
+    if (p == null) {
+      await _abort('اسم المستخدم غير موجود في قاعدة بيانات الجامعة');
+    }
+    final user = p!;
+    if (user.student?.activated ?? user.staff!.activated) {
+      await _abort('هذا الحساب مفعّل مسبقاً. راجع الإدارة لإعادة تعيين كلمة المرور');
+    }
+    final ok = isBoot
+        ? password == AppConfig.bootstrapAdminPassword
+        : checkInitialPassword(
+            username: uname,
+            initPw: user.student?.initPw ?? user.staff?.initPw,
+            password: password,
+            isStaff: user.staff != null);
+    if (!ok) await _abort('كلمة المرور غير صحيحة');
+    return LoginResult(user, mustChangePassword: true);
+  }
+
+  @override
+  Future<bool> needsPasswordChange() async {
+    final u = _auth.currentUser;
+    final e = u?.email;
+    if (e == null) return false;
+    final synthetic = e.endsWith('@${AppConfig.studentAuthDomain}') ||
+        e.endsWith('@${AppConfig.staffAuthDomain}');
+    if (!synthetic) return false;
+    final p = await _profileForAuthEmail(e);
+    return p != null && !(p.student?.activated ?? p.staff!.activated);
+  }
+
+  @override
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final u = _auth.currentUser;
+    final e = u?.email;
+    if (u == null || e == null) throw AppException('لم يتم تسجيل الدخول');
+    if (!e.endsWith('@${AppConfig.studentAuthDomain}') &&
+        !e.endsWith('@${AppConfig.staffAuthDomain}')) {
+      throw AppException('دخلت بحساب Google ولا تحتاج كلمة مرور');
+    }
+    try {
+      await u.reauthenticateWithCredential(
+          EmailAuthProvider.credential(email: e, password: oldPassword));
+      await u.updatePassword(newPassword);
+    } on FirebaseAuthException catch (x) {
+      if (_isWrongCreds(x)) throw AppException('كلمة المرور الحالية غير صحيحة');
+      if (x.code == 'weak-password') {
+        throw AppException('كلمة المرور ضعيفة (6 أحرف على الأقل)');
+      }
+      throw AppException(_authError(x));
+    }
+    final local = e.split('@').first;
+    if (e.endsWith('@${AppConfig.studentAuthDomain}')) {
+      await _students.doc(local).update({'activated': true});
+    } else {
+      await _staff
+          .doc('$local@${AppConfig.universityDomain}')
+          .update({'activated': true});
+    }
+  }
+
+  @override
+  Future<void> resetStudentAccount(String studentId, {String? initPw}) async {
+    await _students.doc(studentId).update({
+      'activated': false,
+      'initPw': initPw == null ? null : hashPassword(studentId, initPw),
+    });
+    _studentsCache = null;
+  }
+
+  @override
+  Future<void> resetStaffAccount(String staffId, {String? initPw}) async {
+    await _staff.doc(staffId).update({
+      'activated': false,
+      'initPw': initPw == null
+          ? null
+          : hashPassword(staffId.split('@').first, initPw),
+    });
   }
 
   @override
@@ -447,6 +607,83 @@ class FirebaseRepo implements Repo {
   @override
   Future<void> saveStaffBulk(List<Staff> list) =>
       _bulk('staff', list.map((s) => s.toMap()).toList());
+
+  // ---------------- الدرجات والدروس ----------------
+  @override
+  Future<GradeScheme> scheme(String courseId) async {
+    final d = await _db.collection('schemes').doc(_safe(courseId)).get();
+    return GradeScheme.fromMap(courseId, d.data());
+  }
+
+  @override
+  Future<void> saveScheme(GradeScheme s) =>
+      _db.collection('schemes').doc(_safe(s.courseId)).set(s.toMap());
+
+  @override
+  Future<List<GradeRecord>> gradesForCourse(String courseId) async {
+    final q = await _db
+        .collection('grades')
+        .where('courseId', isEqualTo: courseId)
+        .get();
+    return q.docs.map((d) => GradeRecord.fromMap(d.data())).toList();
+  }
+
+  @override
+  Future<List<GradeRecord>> gradesForStudent(String studentId) async {
+    final q = await _db
+        .collection('grades')
+        .where('studentId', isEqualTo: studentId)
+        .get();
+    return q.docs.map((d) => GradeRecord.fromMap(d.data())).toList();
+  }
+
+  @override
+  Future<void> saveGradesBulk(List<GradeRecord> list) async {
+    const chunk = 400;
+    for (var i = 0; i < list.length; i += chunk) {
+      final b = _db.batch();
+      for (final g in list.skip(i).take(chunk)) {
+        b.set(_db.collection('grades').doc(_safe(g.id)), g.toMap());
+      }
+      await b.commit();
+    }
+  }
+
+  @override
+  Future<List<Lesson>> lessonsForCourse(String courseId) async {
+    final q = await _db
+        .collection('lessons')
+        .where('courseId', isEqualTo: courseId)
+        .get();
+    return q.docs.map((d) => Lesson.fromMap(d.data())).toList()
+      ..sort((a, b) =>
+          a.week != b.week ? a.week.compareTo(b.week) : a.date.compareTo(b.date));
+  }
+
+  @override
+  Future<Lesson> saveLesson(Lesson l) async {
+    final ref = l.id.isEmpty
+        ? _db.collection('lessons').doc()
+        : _db.collection('lessons').doc(l.id);
+    final x = Lesson(
+        id: ref.id,
+        courseId: l.courseId,
+        title: l.title,
+        week: l.week,
+        description: l.description,
+        link: l.link,
+        date: l.date,
+        by: l.by);
+    await ref.set(x.toMap());
+    return x;
+  }
+
+  @override
+  Future<void> deleteLesson(String id) =>
+      _db.collection('lessons').doc(id).delete();
+
+  /// معرّفات المواد تحوي "|" وهو مقبول في Firestore، لكن نستبدل "/" احتياطاً.
+  static String _safe(String id) => id.replaceAll('/', '_');
 
   @override
   Future<void> markAttendance(AttendanceRecord r) async {

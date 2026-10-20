@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const night = Color(0xFF1E1B4B);
+  static const night = Color(0xFF16183A);
   static const royal = Color(0xFF4338CA);
   static const violet = Color(0xFF7C3AED);
   static const cyan = Color(0xFF06B6D4);
-  static const gold = Color(0xFFF59E0B);
+  static const gold = Color(0xFFE2AA53);
   static const emerald = Color(0xFF10B981);
   static const rose = Color(0xFFF43F5E);
   static const orange = Color(0xFFF97316);

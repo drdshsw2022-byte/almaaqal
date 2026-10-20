@@ -3,24 +3,34 @@ rules_version = '2';
 // قواعد حماية قاعدة بيانات نظام جامعة المعقل الأهلية (تسلسل هرمي للصلاحيات RBAC)
 // انسخ هذا الملف إلى: Firebase Console > Firestore Database > Rules ثم اضغط Publish
 //
-// الهوية = البريد الجامعي الموثّق من Google.
-// الصفات: admin (مدير النظام) > president (الإدارة العليا) > dean (عميد) > head (رئيس قسم) > doctor (تدريسي)
-// الكادر: staff/<البريد>  •  الطلاب: students/<الرقم المعرفي>
+// طرق الدخول:
+//  - Google بالبريد الجامعي @almaaqal.edu.iq
+//  - كلمة المرور: الكادر بحساب داخلي <اسم المستخدم>@pw.almaaqal.app
+//                 الطالب بحساب داخلي <الرقم المعرفي>@st.almaaqal.app
+// الكادر: staff/<البريد الجامعي>  •  الطلاب: students/<الرقم المعرفي>
 service cloud.firestore {
   match /databases/{database}/documents {
 
     function signedIn() { return request.auth != null && request.auth.token.email != null; }
-    function email() { return request.auth.token.email.lower(); }
+    function authEmail() { return request.auth.token.email.lower(); }
+    function localPart() { return authEmail().split('@')[0]; }
+    function isStaffPw() { return authEmail().matches('.*@pw[.]almaqal[.]app'); }
+    function isStudentPw() { return authEmail().matches('.*@st[.]almaqal[.]app'); }
+
+    // البريد الجامعي المكافئ لهوية المستخدم
+    function email() { return isStaffPw() ? localPart() + '@almaaqal.edu.iq' : authEmail(); }
 
     // المدير العام (عدّل القائمة لتطابق superAdminEmails في config.dart)
     function isSuperAdmin() {
-      return signedIn() && email() in ['drdsh.sw2022@gmail.com'];
+      return signedIn() && authEmail() in ['drdsh.sw2022@gmail.com'];
     }
 
-    // البريد الجامعي الرسمي فقط (أو المدير العام)
     function isMember() {
-      return signedIn() && request.auth.token.email_verified == true &&
-        (email().matches('.*@almaaqal[.]edu[.]iq') || isSuperAdmin());
+      return signedIn() && (
+        (request.auth.token.email_verified == true &&
+          (authEmail().matches('.*@almaaqal[.]edu[.]iq') || isSuperAdmin())) ||
+        (isStaffPw() && exists(/databases/$(database)/documents/staff/$(email()))) ||
+        (isStudentPw() && exists(/databases/$(database)/documents/students/$(localPart()))));
     }
 
     function isStaff() {
@@ -49,13 +59,12 @@ service cloud.firestore {
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
     }
 
-    // الهيكل والإعدادات: قراءة لكل منتسب، كتابة للإدارة العليا
+    // الهيكل والإعدادات
     match /colleges/{id}    { allow read: if isMember(); allow write: if isTop(); }
     match /departments/{id} { allow read: if isMember(); allow write: if isTop(); }
     match /settings/{id}    { allow read: if isMember(); allow write: if isTop(); }
     match /meta/{id}        { allow read: if isMember(); allow write: if isTop(); }
 
-    // المواد: رئيس القسم لقسمه، العميد لكليته، الإدارة العليا للجميع
     match /courses/{id} {
       allow read: if isMember();
       allow create, update: if managesDept(request.resource.data.deptId);
@@ -63,16 +72,15 @@ service cloud.firestore {
     }
 
     match /students/{id} {
-      allow read: if isMember();
+      allow read: if isMember() || (isStudentPw() && id == localPart());
       allow create: if managesDept(request.resource.data.deptId);
       allow update: if managesDept(request.resource.data.deptId) ||
-        // أي تدريسي يستطيع ربط بطاقة NFC بطالب أثناء المحاضرة
-        (isStaff() && onlyChanges(['nfcUid']));
+        (isStaff() && onlyChanges(['nfcUid'])) ||
+        // الطالب يثبّت تفعيل حسابه بعد تغيير كلمة المرور الأولية
+        (isStudentPw() && id == localPart() && onlyChanges(['activated']));
       allow delete: if managesDept(resource.data.deptId);
     }
 
-    // من يضيف من: مدير النظام الجميع، الرئاسة الجميع عدا مدير النظام،
-    // العميد رؤساء الأقسام والتدريسيين في كليته، رئيس القسم التدريسيين في قسمه
     function canAssign(data) {
       return isSuperAdmin() || myRole() == 'admin' ||
         (myRole() == 'president' && data.role != 'admin') ||
@@ -81,12 +89,14 @@ service cloud.firestore {
     }
 
     match /staff/{staffEmail} {
-      allow read: if isMember();
+      allow read: if isMember() || (signedIn() && staffEmail == email());
       allow create: if canAssign(request.resource.data) ||
-        (staffEmail == email() && isSuperAdmin());
+        (staffEmail == email() && isSuperAdmin()) ||
+        // أول دخول لمدير النظام admin بكلمة المرور
+        (isStaffPw() && staffEmail == 'admin@almaaqal.edu.iq' &&
+          staffEmail == email() && request.resource.data.role == 'admin');
       allow update: if (canAssign(resource.data) && canAssign(request.resource.data)) ||
-        // التدريسي يعدّل قائمة مواده فقط
-        (staffEmail == email() && onlyChanges(['courseIds']));
+        (staffEmail == email() && onlyChanges(['courseIds', 'activated']));
       allow delete: if canAssign(resource.data);
     }
 
@@ -107,11 +117,39 @@ service cloud.firestore {
 
     match /attendance/{id} {
       allow read: if isMember();
-      // يسجّل الحضور صاحب المحاضرة أو من يدير قسمها (بمسح الهوية أو NFC)
       allow create: if canTakeAttendance(request.resource.data.sessionId) &&
         id == request.resource.data.sessionId + '_' + request.resource.data.studentId;
       allow update: if false;
       allow delete: if canTakeAttendance(resource.data.sessionId);
+    }
+
+    // ---------------- الدرجات والدروس ----------------
+    function courseDept(courseId) {
+      return get(/databases/$(database)/documents/courses/$(courseId)).data.deptId;
+    }
+    // مدرّس المادة أو من يدير قسمها
+    function canGrade(courseId) {
+      return isStaff() && (courseId in me().courseIds || managesDept(courseDept(courseId)));
+    }
+
+    match /schemes/{id} {
+      allow read: if isMember();
+      allow write: if canGrade(request.resource.data.courseId);
+    }
+
+    match /grades/{id} {
+      // الكادر يرى الدرجات؛ الطالب يرى درجاته فقط
+      allow read: if isStaff() ||
+        (isMember() && (resource.data.studentId == localPart() ||
+                        resource.data.studentEmail == authEmail()));
+      allow create, update: if canGrade(request.resource.data.courseId);
+      allow delete: if canGrade(resource.data.courseId);
+    }
+
+    match /lessons/{id} {
+      allow read: if isMember();
+      allow create, update: if canGrade(request.resource.data.courseId);
+      allow delete: if canGrade(resource.data.courseId);
     }
   }
 }

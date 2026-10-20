@@ -7,6 +7,7 @@ import '../../widgets/common.dart';
 import '../common/filters.dart';
 import '../common/student_report_screen.dart';
 import '../common/nfc_link.dart';
+import '../common/password_tools.dart';
 import '../student/id_card_screen.dart';
 
 const _noDept = '__none__';
@@ -219,6 +220,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
       deptId: dept,
       email: e.isEmpty ? null : e,
       nfcUid: s?.nfcUid,
+      activated: s?.activated ?? false,
+      initPw: s?.initPw,
     );
     await runBusy(context, () => repo.saveStudent(st), success: 'تم الحفظ');
     _load();
@@ -367,6 +370,9 @@ class _StudentsScreenState extends State<StudentsScreen> {
                   await runBusy(context, () => repo.setStudentNfc(s.id, null),
                       success: 'تم إلغاء ربط البطاقة');
                   _load();
+                case 'reset':
+                  await resetPasswordFlow(context, student: s);
+                  _load();
                 case 'edit':
                   _edit(s);
                 default:
@@ -384,6 +390,8 @@ class _StudentsScreenState extends State<StudentsScreen> {
               if (s.nfcUid != null)
                 const PopupMenuItem(
                     value: 'unnfc', child: Text('إلغاء ربط البطاقة')),
+              const PopupMenuItem(
+                  value: 'reset', child: Text('إعادة تعيين كلمة المرور')),
               const PopupMenuItem(value: 'edit', child: Text('تعديل')),
               const PopupMenuItem(value: 'del', child: Text('حذف')),
             ],

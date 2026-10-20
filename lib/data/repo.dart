@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../config.dart';
@@ -15,6 +17,18 @@ abstract class Repo {
 
   /// الدخول بحساب Google الجامعي. في الوضع التجريبي يُمرَّر البريد مباشرة.
   Future<AppUser> signInWithGoogle({String? demoEmail});
+
+  /// الدخول باسم المستخدم (الرقم المعرفي للطالب) وكلمة المرور.
+  /// أول دخول بكلمة المرور الأولية يعيد mustChangePassword = true.
+  Future<LoginResult> signInWithPassword(String username, String password);
+
+  /// هل يجب على المستخدم الحالي تغيير كلمة المرور الأولية؟
+  Future<bool> needsPasswordChange();
+  Future<void> changePassword(String oldPassword, String newPassword);
+
+  /// (للإدارة) إعادة الحساب لكلمة مرور أولية: initPw = null تعني اسم المستخدم.
+  Future<void> resetStudentAccount(String studentId, {String? initPw});
+  Future<void> resetStaffAccount(String staffId, {String? initPw});
   Future<void> signOut();
 
   // ---------- تهيئة البيانات ----------
@@ -72,6 +86,16 @@ abstract class Repo {
   Future<void> saveStudentsBulk(List<Student> list);
   Future<void> saveCoursesBulk(List<Course> list);
   Future<void> saveStaffBulk(List<Staff> list);
+
+  // ---------- الدرجات والدروس ----------
+  Future<GradeScheme> scheme(String courseId);
+  Future<void> saveScheme(GradeScheme s);
+  Future<List<GradeRecord>> gradesForCourse(String courseId);
+  Future<List<GradeRecord>> gradesForStudent(String studentId);
+  Future<void> saveGradesBulk(List<GradeRecord> list);
+  Future<List<Lesson>> lessonsForCourse(String courseId);
+  Future<Lesson> saveLesson(Lesson l);
+  Future<void> deleteLesson(String id);
 
   /// يسجل الحضور ويرمي [AppException] إذا كان مسجلاً مسبقاً.
   Future<void> markAttendance(AttendanceRecord r);
@@ -155,4 +179,31 @@ class Stats {
               (shift == 'all' || s.shift == shift))
           .toList()
         ..sort((a, b) => a.name.compareTo(b.name));
+}
+
+/// بصمة كلمة المرور (لا تُخزَّن كلمات المرور كنص).
+String hashPassword(String username, String password) => sha256
+    .convert(utf8.encode('almaqal::${username.toLowerCase()}::$password'))
+    .toString();
+
+/// كلمة المرور الأولية المقبولة: ما حدده المدير، وإلا الافتراضية:
+/// للطالب = رقمه المعرفي، وللكادر = [AppConfig.defaultStaffPassword].
+bool checkInitialPassword(
+    {required String username,
+    required String? initPw,
+    required String password,
+    bool isStaff = false}) {
+  if (initPw != null && initPw.isNotEmpty) {
+    return hashPassword(username, password) == initPw;
+  }
+  return password == (isStaff ? AppConfig.defaultStaffPassword : username);
+}
+
+/// يحوّل ما يكتبه المستخدم إلى (رقم طالب) أو (بريد كادر).
+({String? studentId, String? staffEmail}) resolveUsername(String input) {
+  final t = input.trim().toLowerCase();
+  if (t.isEmpty) return (studentId: null, staffEmail: null);
+  if (RegExp(r'^[0-9]+$').hasMatch(t)) return (studentId: t, staffEmail: null);
+  if (t.contains('@')) return (studentId: null, staffEmail: t);
+  return (studentId: null, staffEmail: '$t@${AppConfig.universityDomain}');
 }

@@ -13,6 +13,18 @@ class AppConfig {
   /// حسابات تملك صلاحية المدير العام دائماً (حتى من خارج نطاق الجامعة).
   static const superAdminEmails = <String>['drdsh.sw2022@gmail.com'];
 
+  // ---------------- الدخول بكلمة المرور ----------------
+  /// حساب مدير النظام الأول (يُطلب تغيير كلمة مروره عند أول دخول).
+  static const bootstrapAdminUsername = 'admin';
+  static const bootstrapAdminPassword = 'Almaaqal@2026';
+
+  /// كلمة المرور الأولية الافتراضية للكادر (إن لم يحدد المدير غيرها).
+  static const defaultStaffPassword = 'Almaaqal@2026';
+
+  /// نطاقات داخلية لحسابات كلمة المرور في Firebase (لا تُستخدم كبريد حقيقي).
+  static const staffAuthDomain = 'pw.almaaqal.app';
+  static const studentAuthDomain = 'st.almaaqal.app';
+
   /// بادئة رمز هوية الطالب (QR / NFC).
   static const studentCodePrefix = 'ALMAQAL-ST';
 

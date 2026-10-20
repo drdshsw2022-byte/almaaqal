@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../app_state.dart';
 import '../config.dart';
+import '../data/repo.dart';
 import '../models.dart';
 
 /// أنواع البيانات التي ترفع من Excel.
@@ -48,6 +49,7 @@ const _fields = <ImportKind, Map<String, List<String>>>{
     'shift': ['الدوام', 'shift'],
     'dept': ['القسم', 'department', 'dept'],
     'email': ['البريد الجامعي', 'البريد', 'الايميل', 'الايميل الجامعي', 'email'],
+    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'password'],
   },
   ImportKind.staff: {
     'email': ['البريد الجامعي', 'البريد', 'الايميل', 'الايميل الجامعي', 'email'],
@@ -55,6 +57,7 @@ const _fields = <ImportKind, Map<String, List<String>>>{
     'role': ['الصفه', 'الدور', 'المنصب', 'role'],
     'college': ['الكليه', 'college'],
     'dept': ['القسم', 'department', 'dept'],
+    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'password'],
   },
   ImportKind.courses: {
     'dept': ['القسم', 'department', 'dept'],
@@ -99,7 +102,9 @@ const _templates = <ImportKind, List<List<String>>>{
 class ExcelImporter {
   ExcelImporter._();
 
-  static String _cell(Data? d) {
+  static String _cell(Data? d) => cellText(d);
+
+  static String cellText(Data? d) {
     final v = d?.value;
     if (v == null) return '';
     final String s = switch (v) {
@@ -331,6 +336,10 @@ class ExcelImporter {
         deptId: deptId,
         email: email ?? old?.email,
         nfcUid: old?.nfcUid,
+        activated: old?.activated ?? false,
+        initPw: r['password'] != null
+            ? hashPassword(id, r['password']!)
+            : old?.initPw,
       );
       out[s.id] = s; // آخر ظهور للرقم هو المعتمد
     }
@@ -401,6 +410,10 @@ class ExcelImporter {
         collegeId: c?.id ?? old?.collegeId,
         deptId: deptId ?? old?.deptId,
         courseIds: old?.courseIds ?? const [],
+        activated: old?.activated ?? false,
+        initPw: r['password'] != null
+            ? hashPassword(email.split('@').first, r['password']!)
+            : old?.initPw,
       ));
       old == null ? res.added++ : res.updated++;
     }
@@ -509,5 +522,119 @@ class ExcelImporter {
       }
     }
     return res;
+  }
+}
+
+// ======================== الدرجات ========================
+
+const _gradeHeaders = <String, List<String>>{
+  'id': ['الرقم الجامعي', 'الرقم المعرفي', 'رقم الطالب', 'id', 'student id'],
+  'quiz': ['الاختبارات', 'اختبارات', 'الاختبارات القصيره', 'quiz', 'quizzes'],
+  'assignment': ['الواجبات', 'واجبات', 'الواجب', 'assignment', 'assignments', 'homework'],
+  'lab': ['المختبر', 'مختبر', 'المختبرات', 'العملي', 'lab', 'labs'],
+  'attendance': ['الحضور', 'حضور', 'درجه الحضور', 'attendance'],
+  'midterm': ['الامتحان الفصلي', 'الفصلي', 'امتحان نصف السنه', 'نصف الفصل', 'midterm', 'mid'],
+  'final': ['الامتحان النهائي', 'النهائي', 'final'],
+};
+
+class GradeRow {
+  final int row;
+  final String studentId;
+  final Map<String, double?> marks; // null = خلية فارغة (لا تغيير)
+  GradeRow(this.row, this.studentId, this.marks);
+}
+
+class GradesExcel {
+  GradesExcel._();
+
+  static String _fmt(double? v) {
+    if (v == null) return '';
+    return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+  }
+
+  /// قالب درجات مملوء مسبقاً بطلاب المادة ودرجاتهم الحالية.
+  static Future<void> shareTemplate(Course c, List<Student> students,
+      GradeScheme sch, Map<String, GradeRecord> existing) async {
+    final x = Excel.createExcel();
+    final sheet = x['Sheet1'];
+    final comps = sch.active;
+    sheet.appendRow([
+      TextCellValue('الرقم الجامعي'),
+      TextCellValue('اسم الطالب'),
+      ...comps.map((k) =>
+          TextCellValue('${componentName(k)} (من ${_fmt(sch.max[k])})')),
+    ]);
+    for (final s in students) {
+      final g = existing[s.id];
+      sheet.appendRow([
+        TextCellValue(s.id),
+        TextCellValue(s.name),
+        ...comps.map((k) {
+          final v = g?.marks[k];
+          return v == null ? null : DoubleCellValue(v);
+        }),
+      ]);
+    }
+    final bytes = x.encode();
+    if (bytes == null) return;
+    await Share.shareXFiles([
+      XFile.fromData(Uint8List.fromList(bytes),
+          mimeType:
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          name: 'grades_${c.code}.xlsx')
+    ], subject: 'درجات ${c.nameAr}');
+  }
+
+  /// يختار ملف الدرجات (من الهاتف أو Google Drive) ويقرأ صفوفه.
+  static Future<List<GradeRow>?> pick() async {
+    final r = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['xlsx'],
+      withData: true,
+    );
+    final bytes = r?.files.single.bytes;
+    if (bytes == null) return null;
+    final x = Excel.decodeBytes(bytes);
+    final out = <GradeRow>[];
+    for (final sheet in x.tables.values) {
+      final rows = sheet.rows;
+      int headerAt = -1;
+      Map<int, String> colField = {};
+      for (var i = 0; i < rows.length && i < 15; i++) {
+        final m = <int, String>{};
+        for (var c = 0; c < rows[i].length; c++) {
+          final h = norm(ExcelImporter.cellText(rows[i][c]).split('(').first);
+          if (h.isEmpty) continue;
+          for (final e in _gradeHeaders.entries) {
+            if (m.containsValue(e.key)) continue;
+            if (e.value.any((syn) => norm(syn) == h)) {
+              m[c] = e.key;
+              break;
+            }
+          }
+        }
+        if (m.containsValue('id') && m.length >= 2) {
+          headerAt = i;
+          colField = m;
+          break;
+        }
+      }
+      if (headerAt < 0) continue;
+      for (var i = headerAt + 1; i < rows.length; i++) {
+        String? id;
+        final marks = <String, double?>{};
+        colField.forEach((c, f) {
+          if (c >= rows[i].length) return;
+          final v = ExcelImporter.cellText(rows[i][c]);
+          if (f == 'id') {
+            if (v.isNotEmpty) id = v;
+          } else if (v.isNotEmpty) {
+            marks[f] = double.tryParse(v.replaceAll(',', '.'));
+          }
+        });
+        if (id != null && marks.isNotEmpty) out.add(GradeRow(i + 1, id!, marks));
+      }
+    }
+    return out;
   }
 }

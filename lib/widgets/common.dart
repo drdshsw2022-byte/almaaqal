@@ -9,7 +9,8 @@ import '../theme.dart';
 /// شعار التطبيق.
 class AppLogo extends StatelessWidget {
   final double size;
-  const AppLogo({super.key, this.size = 72});
+  final bool light; // النسخة الذهبية على خلفية بيضاء
+  const AppLogo({super.key, this.size = 72, this.light = false});
 
   @override
   Widget build(BuildContext context) {
@@ -17,18 +18,17 @@ class AppLogo extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(size * 0.28),
+        shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
               color: Colors.black.withOpacity(0.25),
-              blurRadius: size * 0.25,
-              offset: Offset(0, size * 0.08)),
+              blurRadius: size * 0.2,
+              offset: Offset(0, size * 0.06)),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(size * 0.28),
-        child: Image.asset('assets/images/icon.png', fit: BoxFit.cover),
-      ),
+      child: Image.asset(
+          light ? 'assets/images/logo_light.png' : 'assets/images/logo.png',
+          fit: BoxFit.contain),
     );
   }
 }
@@ -490,6 +490,7 @@ Future<void> logout(BuildContext context) async {
   if (!ok) return;
   await AppState.repo.signOut();
   await NfcService.setStudentPayload(null);
+  AppState.mustChangePassword.value = false;
   AppState.user.value = null;
 }
 

@@ -4,6 +4,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
+import 'change_password_screen.dart';
 
 /// نافذة الملف الشخصي.
 Future<void> showProfileSheet(BuildContext context) {
@@ -47,6 +48,8 @@ Future<void> showProfileSheet(BuildContext context) {
                     const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             Center(child: Pill(roleLabel)),
             const SizedBox(height: 16),
+            _row(Icons.person_outline, 'اسم المستخدم',
+                u.student?.id ?? u.staff!.username),
             _row(Icons.alternate_email, 'البريد', u.email ?? '—'),
             if (u.student != null) ...[
               _row(Icons.badge_outlined, 'الرقم المعرفي', u.student!.id),
@@ -56,6 +59,18 @@ Future<void> showProfileSheet(BuildContext context) {
                   shiftName(u.student!.shift)),
             ],
             const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(c);
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => const ChangePasswordScreen()));
+              },
+              icon: const Icon(Icons.password),
+              label: const Text('تغيير كلمة المرور'),
+            ),
+            const SizedBox(height: 8),
             OutlinedButton.icon(
               onPressed: () {
                 Navigator.pop(c);

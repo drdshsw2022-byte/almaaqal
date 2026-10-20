@@ -6,7 +6,7 @@ import '../models.dart';
 import '../theme.dart';
 import '../widgets/common.dart';
 
-/// الدخول بالبريد الجامعي الرسمي (حساب Google للجامعة) فقط.
+/// الدخول: اسم المستخدم/الرقم المعرفي وكلمة المرور، أو حساب Google الجامعي.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,7 +15,9 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController();
+  final _user = TextEditingController();
+  final _pw = TextEditingController();
+  bool _obscure = true;
   bool _busy = false;
   Portal _portal = Portal.management;
 
@@ -49,31 +51,54 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _email.dispose();
+    _user.dispose();
+    _pw.dispose();
     super.dispose();
   }
 
-  Future<void> _signIn({String? demoEmail}) async {
-    if (repo.isDemo) {
-      demoEmail ??= _email.text.trim();
-      if (demoEmail.isEmpty) {
-        showSnack(context, 'اكتب بريدك الجامعي', error: true);
-        return;
-      }
-      if (!demoEmail.contains('@')) {
-        demoEmail = '$demoEmail@${AppConfig.universityDomain}';
-      }
+  Future<void> _finish(AppUser u, bool mustChange) async {
+    final why = _mismatch(u);
+    if (why != null) {
+      await repo.signOut();
+      throw AppException(why);
+    }
+    await AppState.savePortal(_portal);
+    AppState.mustChangePassword.value = mustChange;
+    await AppState.afterLogin(u);
+  }
+
+  Future<void> _signInPassword() async {
+    final user = _user.text.trim();
+    if (user.isEmpty || _pw.text.isEmpty) {
+      showSnack(
+          context,
+          _portal == Portal.student
+              ? 'أدخل الرقم المعرفي وكلمة المرور'
+              : 'أدخل اسم المستخدم وكلمة المرور',
+          error: true);
+      return;
+    }
+    if (_portal == Portal.student && !RegExp(r'^[0-9]+$').hasMatch(user)) {
+      showSnack(context, 'الرقم المعرفي أرقام فقط', error: true);
+      return;
     }
     setState(() => _busy = true);
     try {
-      final u = await repo.signInWithGoogle(demoEmail: demoEmail);
-      final why = _mismatch(u);
-      if (why != null) {
-        await repo.signOut();
-        throw AppException(why);
-      }
-      await AppState.savePortal(_portal);
-      await AppState.afterLogin(u);
+      final r = await repo.signInWithPassword(user, _pw.text);
+      await _finish(r.user, r.mustChangePassword);
+    } catch (e) {
+      if (mounted) showSnack(context, friendlyError(e), error: true);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _signInGoogle({bool superAdmin = false}) async {
+    setState(() => _busy = true);
+    try {
+      final u = await repo.signInWithGoogle(
+          demoEmail: superAdmin ? 'superadmin' : null);
+      await _finish(u, false);
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     } finally {
@@ -110,7 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         color: Colors.white,
                         fontSize: 27,
                         fontWeight: FontWeight.w900)),
-                Text('${AppConfig.city} • نظام الحضور والغياب الذكي',
+                Text('${AppConfig.city} • النظام الجامعي المتكامل',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Colors.white.withOpacity(0.8), fontSize: 14)),
@@ -118,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 _card(),
                 if (repo.isDemo) ...[
                   const SizedBox(height: 16),
-                  _demoBanner(),
+                  _localBanner(),
                 ],
               ],
             ),
@@ -148,34 +173,76 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 18),
           Text('دخول ${_tabs.firstWhere((t) => t.$1 == _portal).$2}',
               style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          const Text(
-              'بالبريد الجامعي الرسمي @${AppConfig.universityDomain}',
-              style: TextStyle(color: AppColors.muted, fontSize: 13)),
-          const SizedBox(height: 20),
-          if (repo.isDemo) ...[
-            TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              textDirection: TextDirection.ltr,
-              onSubmitted: (_) => _signIn(),
-              decoration: const InputDecoration(
-                labelText: 'البريد الجامعي',
-                hintText: 'name@${AppConfig.universityDomain}',
-                prefixIcon: Icon(Icons.alternate_email),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _user,
+            keyboardType: _portal == Portal.student
+                ? TextInputType.number
+                : TextInputType.text,
+            textDirection: TextDirection.ltr,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              labelText: _portal == Portal.student
+                  ? 'الرقم المعرفي (الجامعي)'
+                  : 'اسم المستخدم',
+              hintText: _portal == Portal.student ? '1989616052' : 'admin',
+              prefixIcon: Icon(_portal == Portal.student
+                  ? Icons.badge_outlined
+                  : Icons.person_outline),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _pw,
+            obscureText: _obscure,
+            onSubmitted: (_) => _signInPassword(),
+            decoration: InputDecoration(
+              labelText: 'كلمة المرور',
+              prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(_obscure
+                    ? Icons.visibility_outlined
+                    : Icons.visibility_off_outlined),
+                onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
-            const SizedBox(height: 14),
-          ],
-          _googleButton(),
+          ),
+          const SizedBox(height: 18),
+          _loginButton(),
           if (!repo.isDemo) ...[
-            const SizedBox(height: 6),
-            TextButton(
-              onPressed: _busy ? null : () => _signIn(demoEmail: 'superadmin'),
-              child: const Text('دخول المدير العام بحساب آخر',
-                  style: TextStyle(fontSize: 12)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text('أو',
+                      style: TextStyle(color: Colors.grey.shade500)),
+                ),
+                const Expanded(child: Divider()),
+              ],
             ),
+            const SizedBox(height: 14),
+            OutlinedButton.icon(
+              onPressed: _busy ? null : () => _signInGoogle(),
+              icon: const _GoogleMark(),
+              label: const Text('بحساب Google الجامعي'),
+            ),
+            if (_portal == Portal.management)
+              TextButton(
+                onPressed: _busy ? null : () => _signInGoogle(superAdmin: true),
+                child: const Text('دخول المدير العام بحساب آخر',
+                    style: TextStyle(fontSize: 12)),
+              ),
           ],
+          const SizedBox(height: 6),
+          Text(
+            _portal == Portal.student
+                ? 'أول دخول: كلمة المرور الأولية هي رقمك المعرفي، وسيُطلب منك تغييرها.'
+                : 'أول دخول: استخدم كلمة المرور الأولية التي سلّمتها لك الإدارة، وسيُطلب منك تغييرها.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
         ],
       ),
     );
@@ -221,20 +288,20 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _googleButton() {
+  Widget _loginButton() {
     return Opacity(
       opacity: _busy ? 0.6 : 1,
       child: Material(
         color: Colors.transparent,
         child: Ink(
-          height: 56,
+          height: 54,
           decoration: BoxDecoration(
             gradient: AppColors.mainGradient,
             borderRadius: BorderRadius.circular(16),
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: _busy ? null : () => _signIn(),
+            onTap: _busy ? null : _signInPassword,
             child: Center(
               child: _busy
                   ? const SizedBox(
@@ -245,9 +312,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   : const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _GoogleMark(),
-                        SizedBox(width: 10),
-                        Text('الدخول بالبريد الجامعي',
+                        Icon(Icons.login, color: Colors.white),
+                        SizedBox(width: 8),
+                        Text('تسجيل الدخول',
                             style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 17,
@@ -261,57 +328,25 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _demoBanner() {
-    Widget quick(String label, String email) => Padding(
-          padding: const EdgeInsets.only(left: 8, top: 8),
-          child: ActionChip(
-            label: Text(label),
-            onPressed: _busy ? null : () => _signIn(demoEmail: email),
-          ),
-        );
+  Widget _localBanner() {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: Colors.white.withOpacity(0.25)),
       ),
-      child: DefaultTextStyle(
-        style: const TextStyle(color: Colors.white, fontSize: 13),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Row(
-              children: [
-                Icon(Icons.science_outlined, color: AppColors.gold, size: 20),
-                SizedBox(width: 6),
-                Text('الوضع التجريبي (بدون خادم)',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
-              ],
+      child: const Row(
+        children: [
+          Icon(Icons.cloud_off, color: AppColors.gold, size: 20),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'غير متصل بخادم الجامعة بعد: البيانات محفوظة على هذا الجهاز فقط.',
+              style: TextStyle(color: Colors.white, fontSize: 12.5),
             ),
-            const SizedBox(height: 6),
-            const Text(
-                'اكتب البريد مباشرة بلا كلمة مرور. الطالب: رقمه المعرفي@almaaqal.edu.iq إلى أن تُضاف الإيميلات الرسمية.'),
-            Wrap(
-              children: switch (_portal) {
-                Portal.management => [
-                    quick('رئيس الجامعة', AppConfig.demoPresidentEmail),
-                    quick('عميد', AppConfig.demoDeanEmail),
-                    quick('رئيس قسم', AppConfig.demoHeadEmail),
-                    quick('مدير النظام', AppConfig.demoAdminEmail),
-                  ],
-                Portal.teacher => [
-                    quick('تدريسي', AppConfig.demoDoctorEmail),
-                    quick('رئيس قسم يدرّس', AppConfig.demoHeadEmail),
-                  ],
-                Portal.student => [
-                    quick('طالب تجريبي',
-                        '1989616052@${AppConfig.universityDomain}'),
-                  ],
-              },
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -329,16 +364,24 @@ class _GoogleMark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 26,
-      height: 26,
+      width: 22,
+      height: 22,
       alignment: Alignment.center,
-      decoration:
-          const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: SweepGradient(colors: [
+          Color(0xFFEA4335),
+          Color(0xFFFBBC05),
+          Color(0xFF34A853),
+          Color(0xFF4285F4),
+          Color(0xFFEA4335),
+        ]),
+      ),
       child: const Text('G',
           style: TextStyle(
-              color: Color(0xFF4285F4),
+              color: Colors.white,
               fontWeight: FontWeight.w900,
-              fontSize: 15,
+              fontSize: 13,
               height: 1.1)),
     );
   }

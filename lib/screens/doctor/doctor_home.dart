@@ -7,6 +7,8 @@ import '../../widgets/common.dart';
 import '../common/course_picker.dart';
 import '../common/profile_sheet.dart';
 import '../common/reports_screen.dart';
+import '../common/lessons_screen.dart';
+import 'grades_screen.dart';
 import 'live_session_screen.dart';
 
 class DoctorHome extends StatefulWidget {
@@ -289,6 +291,21 @@ class _DoctorHomeState extends State<DoctorHome> {
     );
   }
 
+  Widget _smallBtn(IconData i, String t, Widget Function() page) => Expanded(
+        child: OutlinedButton.icon(
+          style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(42),
+              padding: const EdgeInsets.symmetric(horizontal: 6)),
+          onPressed: () async {
+            await Navigator.push(
+                context, MaterialPageRoute(builder: (_) => page()));
+            _load();
+          },
+          icon: Icon(i, size: 18),
+          label: Text(t, style: const TextStyle(fontSize: 13)),
+        ),
+      );
+
   /// تجميع المواد: القسم ← المرحلة، ثم مواد الكورس.
   List<Widget> _grouped(List<Course> list) {
     final groups = <String, List<Course>>{};
@@ -400,34 +417,27 @@ class _DoctorHomeState extends State<DoctorHome> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-            child: Row(
+            child: Column(
               children: [
-                Expanded(
-                  flex: 3,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46)),
-                    onPressed: () => _start(c),
-                    icon: const Icon(Icons.qr_code_2),
-                    label: const Text('بدء محاضرة'),
-                  ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(46)),
+                  onPressed: () => _start(c),
+                  icon: const Icon(Icons.qr_code_scanner),
+                  label: const Text('بدء محاضرة وتسجيل الحضور'),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  flex: 2,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                        minimumSize: const Size.fromHeight(46)),
-                    onPressed: () async {
-                      await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (_) => CourseReportScreen(course: c)));
-                      _load();
-                    },
-                    icon: const Icon(Icons.insights),
-                    label: const Text('التقرير'),
-                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _smallBtn(Icons.grading_rounded, 'الدرجات',
+                        () => GradesScreen(course: c)),
+                    const SizedBox(width: 8),
+                    _smallBtn(Icons.menu_book_rounded, 'الدروس',
+                        () => LessonsScreen(course: c, canEdit: true)),
+                    const SizedBox(width: 8),
+                    _smallBtn(Icons.insights, 'الغياب',
+                        () => CourseReportScreen(course: c)),
+                  ],
                 ),
               ],
             ),

@@ -24,6 +24,8 @@ dependencies:
   nfc_manager: 3.5.0
   excel: 4.0.6
   file_picker: 8.1.2
+  crypto: 3.0.5
+  url_launcher: 6.3.1
   intl: 0.19.0
 
 dev_dependencies:
@@ -43,5 +45,5 @@ flutter_launcher_icons:
   ios: false
   image_path: "assets/images/icon.png"
   min_sdk_android: 23
-  adaptive_icon_background: "#1E1B4B"
+  adaptive_icon_background: "#16183A"
   adaptive_icon_foreground: "assets/images/icon_fg.png"

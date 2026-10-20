@@ -10,6 +10,7 @@ import 'data/local_repo.dart';
 import 'models.dart';
 import 'screens/admin/admin_home.dart';
 import 'screens/doctor/doctor_home.dart';
+import 'screens/common/change_password_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/student/student_home.dart';
 import 'theme.dart';
@@ -89,6 +90,7 @@ class _BootScreenState extends State<BootScreen> {
       final user = results.first as AppUser?;
       await AppState.loadPortal();
       if (user != null) {
+        AppState.mustChangePassword.value = await AppState.repo.needsPasswordChange();
         await AppState.afterLogin(user);
       } else {
         AppState.user.value = null;
@@ -102,10 +104,15 @@ class _BootScreenState extends State<BootScreen> {
   @override
   Widget build(BuildContext context) {
     if (_ready) {
-      return ValueListenableBuilder<AppUser?>(
-        valueListenable: AppState.user,
-        builder: (context, user, _) {
+      return AnimatedBuilder(
+        animation:
+            Listenable.merge([AppState.user, AppState.mustChangePassword]),
+        builder: (context, _) {
+          final user = AppState.user.value;
           if (user == null) return const LoginScreen();
+          if (AppState.mustChangePassword.value) {
+            return const ChangePasswordScreen(force: true);
+          }
           if (user.role == Role.student) return const StudentHome();
           if (user.role == Role.doctor) return const DoctorHome();
           // رئيس القسم/العميد الداخل من تبويب التدريسي يرى لوحة المحاضرات

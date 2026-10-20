@@ -31,6 +31,9 @@ class AppState {
   AppState._();
   static late Repo repo;
   static final ValueNotifier<AppUser?> user = ValueNotifier<AppUser?>(null);
+
+  /// يجب تغيير كلمة المرور الأولية قبل استخدام التطبيق.
+  static final ValueNotifier<bool> mustChangePassword = ValueNotifier(false);
   static AppSettings settings = const AppSettings();
   static Scope scope = const Scope.all();
   static Portal portal = Portal.management;

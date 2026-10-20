@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../app_state.dart';
 import '../../config.dart';
+import '../../data/repo.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/course_picker.dart';
+import '../common/password_tools.dart';
 
 /// إدارة الكادر (الدكاترة والمدراء) وتوزيع المواد عليهم.
 class StaffScreen extends StatefulWidget {
@@ -72,6 +74,7 @@ class _StaffScreenState extends State<StaffScreen> {
 
   Future<void> _edit([Staff? s]) async {
     final email = TextEditingController(text: s?.email);
+    final initPwCtrl = TextEditingController();
     final name = TextEditingController(text: s?.name);
     String role = s?.role ?? 'doctor';
     final sc = AppState.scope.deptIds;
@@ -117,6 +120,18 @@ class _StaffScreenState extends State<StaffScreen> {
                     decoration: const InputDecoration(
                         labelText: 'البريد الجامعي (للدخول)',
                         hintText: 'name@${AppConfig.universityDomain}')),
+                if (s == null) ...[
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: initPwCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'كلمة المرور الأولية (اختياري)',
+                      helperText:
+                          'فارغة = ${AppConfig.defaultStaffPassword} • يُطلب تغييرها عند أول دخول',
+                      helperMaxLines: 2,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 10),
                 if (role == 'dean') ...[
                   DropdownButtonFormField<String?>(
@@ -209,6 +224,10 @@ class _StaffScreenState extends State<StaffScreen> {
       return;
     }
     final staff = Staff(
+      activated: s?.activated ?? false,
+      initPw: initPwCtrl.text.trim().isNotEmpty
+          ? hashPassword(e.split('@').first, initPwCtrl.text.trim())
+          : s?.initPw,
       id: e,
       name: name.text.trim(),
       role: role,
@@ -218,7 +237,14 @@ class _StaffScreenState extends State<StaffScreen> {
           ? courseIds
           : const [],
     );
-    await runBusy(context, () => repo.saveStaff(staff), success: 'تم الحفظ');
+    if (initPwCtrl.text.trim().isNotEmpty && initPwCtrl.text.trim().length < 6) {
+      showSnack(context, 'كلمة المرور الأولية 6 أحرف على الأقل', error: true);
+      return;
+    }
+    await runBusy(context, () => repo.saveStaff(staff),
+        success: s == null
+            ? 'تمت الإضافة • اسم المستخدم: ${staff.username} • كلمة المرور الأولية: ${initPwCtrl.text.trim().isEmpty ? AppConfig.defaultStaffPassword : initPwCtrl.text.trim()}'
+            : 'تم الحفظ');
     _load();
   }
 
@@ -298,7 +324,7 @@ class _StaffScreenState extends State<StaffScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${roleName(s.role)} • ${s.email}',
+            Text('${roleName(s.role)} • اسم المستخدم: ${s.username}${s.activated ? '' : ' • لم يفعّل'}',
                 style: const TextStyle(fontSize: 12)),
             if (s.role == 'doctor' || s.courseIds.isNotEmpty)
               Text(
@@ -310,9 +336,23 @@ class _StaffScreenState extends State<StaffScreen> {
                   style: const TextStyle(fontSize: 12, color: AppColors.royal)),
           ],
         ),
-        trailing: IconButton(
-          onPressed: () => _delete(s),
-          icon: const Icon(Icons.delete_outline, color: AppColors.rose),
+        trailing: PopupMenuButton<String>(
+          onSelected: (v) async {
+            switch (v) {
+              case 'edit':
+                _edit(s);
+              case 'reset':
+                await resetPasswordFlow(context, staff: s);
+                _load();
+              default:
+                _delete(s);
+            }
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('تعديل')),
+            PopupMenuItem(value: 'reset', child: Text('إعادة تعيين كلمة المرور')),
+            PopupMenuItem(value: 'del', child: Text('حذف')),
+          ],
         ),
       ),
     );

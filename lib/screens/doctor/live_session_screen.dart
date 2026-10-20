@@ -12,7 +12,7 @@ import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/reports_screen.dart';
 
-enum _Mode { qr, nfc }
+enum _Mode { qr, nfc, id }
 
 class _Result {
   final bool ok;
@@ -56,6 +56,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   String? _lastCode;
   DateTime _lastAt = DateTime(2000);
   _Result? _result;
+  final _idCtrl = TextEditingController();
   Timer? _clock;
   DateTime _now = DateTime.now();
 
@@ -86,6 +87,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   @override
   void dispose() {
     _clock?.cancel();
+    _idCtrl.dispose();
     _scanner?.dispose();
     NfcService.stopReading();
     super.dispose();
@@ -93,27 +95,37 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
 
   Future<void> _setMode(_Mode m) async {
     if (m == _mode) return;
+    if (m == _Mode.nfc && !_nfcAvailable) {
+      showSnack(context, 'هذا الهاتف لا يدعم NFC أو أنه مطفأ من الإعدادات',
+          error: true);
+      return;
+    }
+    // إيقاف الوضع الحالي
+    if (_mode == _Mode.nfc) await NfcService.stopReading();
+    final old = _scanner;
+    setState(() {
+      _scanner = m == _Mode.qr ? _newScanner() : null;
+      _mode = m;
+    });
+    if (m != _Mode.qr) await old?.dispose();
     if (m == _Mode.nfc) {
-      if (!_nfcAvailable) {
-        showSnack(context, 'هذا الهاتف لا يدعم NFC أو أنه مطفأ من الإعدادات',
-            error: true);
-        return;
-      }
-      final old = _scanner;
-      setState(() {
-        _scanner = null;
-        _mode = m;
-      });
-      await old?.dispose();
       await NfcService.startReading(
           _onNfc, (e) => _show(_Result(false, 'NFC', e)));
-    } else {
-      await NfcService.stopReading();
-      setState(() {
-        _scanner = _newScanner();
-        _mode = m;
-      });
     }
+  }
+
+  /// تسجيل بكتابة الرقم الجامعي (عند تعذّر QR و NFC).
+  Future<void> _submitId() async {
+    final id = _idCtrl.text.trim();
+    if (id.isEmpty) return;
+    final st = _byId[id] ?? await repo.student(id);
+    if (st == null) {
+      _show(_Result(false, 'رقم غير موجود',
+          'الرقم الجامعي $id غير مسجّل في قاعدة البيانات'));
+      return;
+    }
+    _idCtrl.clear();
+    await _register(st, 'id');
   }
 
   // ---------------- القراءة ----------------
@@ -307,12 +319,16 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                 segments: const [
                   ButtonSegment(
                       value: _Mode.qr,
-                      label: Text('مسح QR'),
+                      label: Text('QR'),
                       icon: Icon(Icons.qr_code_scanner)),
                   ButtonSegment(
                       value: _Mode.nfc,
-                      label: Text('قراءة NFC'),
+                      label: Text('NFC'),
                       icon: Icon(Icons.nfc)),
+                  ButtonSegment(
+                      value: _Mode.id,
+                      label: Text('الرقم'),
+                      icon: Icon(Icons.dialpad)),
                 ],
                 selected: {_mode},
                 onSelectionChanged: (v) => _setMode(v.first),
@@ -370,6 +386,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                             switch (r.method) {
                               'qr' => Icons.qr_code_2,
                               'nfc' => Icons.nfc,
+                              'id' => Icons.dialpad,
                               _ => Icons.edit_note,
                             },
                             color: AppColors.royal),
@@ -389,6 +406,45 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   }
 
   Widget _reader() {
+    if (_mode == _Mode.id) {
+      return Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('تسجيل بالرقم الجامعي',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            const Text('عند تعذّر مسح الهوية أو قراءة NFC',
+                style: TextStyle(color: AppColors.muted, fontSize: 12)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _idCtrl,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              textDirection: TextDirection.ltr,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: 2),
+              onSubmitted: (_) => _submitId(),
+              decoration: const InputDecoration(
+                hintText: 'الرقم الجامعي',
+                prefixIcon: Icon(Icons.badge_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ElevatedButton.icon(
+              onPressed: _busy ? null : _submitId,
+              icon: const Icon(Icons.how_to_reg),
+              label: const Text('تسجيل الحضور'),
+            ),
+          ],
+        ),
+      );
+    }
     final scanner = _scanner;
     if (_mode == _Mode.nfc || scanner == null) {
       return Container(
