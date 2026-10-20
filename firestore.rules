@@ -1,0 +1,100 @@
+rules_version = '2';
+
+// قواعد حماية قاعدة بيانات نظام الحضور - جامعة المعقل الأهلية
+// انسخ هذا الملف إلى: Firebase Console > Firestore Database > Rules ثم اضغط Publish
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function email() { return request.auth.token.email; }
+
+    // بريد الدخول بالرقم الجامعي: <الرقم>@id.almaqal.app
+    function idEmail(id) { return id.lower() + '@id.almaqal.app'; }
+
+    // المدير العام (عدّل القائمة عند الحاجة لتطابق config.dart)
+    function isSuperAdmin() {
+      return signedIn() && email() in ['drdsh.sw2022@gmail.com'];
+    }
+
+    function staffDoc(id) {
+      return get(/databases/$(database)/documents/staff/$(id)).data;
+    }
+
+    // مدير مسجّل في مجموعة staff (بالرقم أو ببريد Google)
+    function isAdmin() {
+      return isSuperAdmin() ||
+        (signedIn() && email().matches('.*@id[.]almaqal[.]app') &&
+          exists(/databases/$(database)/documents/staff/$(email().split('@')[0])) &&
+          staffDoc(email().split('@')[0]).role == 'admin') ||
+        (signedIn() && email().matches('.*@id[.]almaqal[.]app') &&
+          exists(/databases/$(database)/documents/staff/$(email().split('@')[0].upper())) &&
+          staffDoc(email().split('@')[0].upper()).role == 'admin') ||
+        (signedIn() &&
+          exists(/databases/$(database)/documents/staff/superadmin) &&
+          staffDoc('superadmin').email == email());
+    }
+
+    function isStaffSelf(id) {
+      return signedIn() &&
+        (email() == idEmail(id) || resource.data.email == email());
+    }
+
+    function onlyChanges(keys) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(keys);
+    }
+
+    // البيانات العامة: قراءة لكل مسجّل، كتابة للمدير
+    match /colleges/{id}    { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /departments/{id} { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /courses/{id}     { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /settings/{id}    { allow read: if signedIn(); allow write: if isAdmin(); }
+    match /meta/{id}        { allow read: if signedIn(); allow write: if isAdmin(); }
+
+    match /students/{id} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        // الطالب يفعّل حسابه أو يربط بريد Google بنفسه فقط
+        (signedIn() && email() == idEmail(id) && onlyChanges(['activated', 'email']));
+    }
+
+    match /staff/{id} {
+      allow read: if signedIn();
+      allow create: if isAdmin() || (id == 'superadmin' && isSuperAdmin());
+      allow delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (isStaffSelf(id) && onlyChanges(['activated', 'email', 'courseIds']));
+    }
+
+    match /sessions/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn() && exists(/databases/$(database)/documents/staff/$(request.resource.data.doctorId));
+      allow update, delete: if isAdmin() ||
+        (signedIn() && (email() == idEmail(resource.data.doctorId) ||
+          staffDoc(resource.data.doctorId).email == email()));
+    }
+
+    function isSessionOwner(sessionId) {
+      let doctorId = get(/databases/$(database)/documents/sessions/$(sessionId)).data.doctorId;
+      return signedIn() && (email() == idEmail(doctorId) || staffDoc(doctorId).email == email());
+    }
+
+    function isStudentSelf(studentId) {
+      return signedIn() && (email() == idEmail(studentId) ||
+        get(/databases/$(database)/documents/students/$(studentId)).data.email == email());
+    }
+
+    match /attendance/{id} {
+      allow read: if signedIn();
+      // التسجيل مرة واحدة فقط (لا تعديل)، والمحاضرة يجب أن تكون جارية
+      // الطالب يسجّل نفسه فقط؛ الدكتور صاحب المحاضرة أو المدير يسجّل يدوياً
+      allow create: if signedIn() &&
+        id == request.resource.data.sessionId + '_' + request.resource.data.studentId &&
+        (isAdmin() || isSessionOwner(request.resource.data.sessionId) ||
+          (isStudentSelf(request.resource.data.studentId) &&
+           get(/databases/$(database)/documents/sessions/$(request.resource.data.sessionId)).data.active == true));
+      allow update: if false;
+      allow delete: if isAdmin() || isSessionOwner(resource.data.sessionId);
+    }
+  }
+}
