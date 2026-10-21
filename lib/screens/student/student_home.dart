@@ -48,6 +48,10 @@ class _StudentHomeState extends State<StudentHome> {
       final fresh = await repo.student(_me.id);
       if (fresh != null) AppState.user.value = AppUser.student(fresh);
       final me = _me;
+      // تجهيز هوية NFC أولاً كي تعمل حتى لو تعذّر تحميل بقية البيانات
+      try {
+        await NfcService.setStudentPayload(StudentCode.encode(me));
+      } catch (_) {}
       final depts = await repo.departments();
       _deptName =
           depts.where((d) => d.id == me.deptId).map((d) => d.name).firstOrNull;
@@ -86,7 +90,6 @@ class _StudentHomeState extends State<StudentHome> {
         for (var i = 0; i < courses.length; i++)
           for (final l in lessons[i]) (courses[i], l)
       ]..sort((a, b) => b.$2.date.compareTo(a.$2.date));
-      await NfcService.setStudentPayload(StudentCode.encode(me));
     } catch (e) {
       if (mounted) showSnack(context, friendlyError(e), error: true);
     }

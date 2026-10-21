@@ -1,13 +1,13 @@
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../app_state.dart';
 import '../config.dart';
 import '../data/repo.dart';
 import '../models.dart';
+import 'xlsx_reader.dart';
 
 /// أنواع البيانات التي ترفع من Excel.
 enum ImportKind { structure, students, staff, courses }
@@ -139,19 +139,13 @@ class ExcelImporter {
   /// يختار ملفاً ويعيد السجلات (كل سجل خريطة حقل ← قيمة) مع رقم الصف.
   static Future<List<(int, Map<String, String>)>?> pickRecords(
       ImportKind k) async {
-    final r = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['xlsx'],
-      withData: true,
-    );
-    final bytes = r?.files.single.bytes;
-    if (bytes == null) return null;
-    final x = Excel.decodeBytes(bytes);
+    final sheets = await XlsxReader.pick();
+    if (sheets == null) return null;
     final fields = _fields[k]!;
     final out = <(int, Map<String, String>)>[];
-    for (final entry in x.tables.entries) {
-      final sheetName = entry.key;
-      final rows = entry.value.rows;
+    for (final sheet in sheets) {
+      final sheetName = sheet.name;
+      final rows = sheet.rows;
       // قيم افتراضية من اسم الورقة (مثل "المرحلة الثانية مسائي")
       final sn = norm(sheetName);
       final sheetStage = parseStage(sheetName) != null ? sheetName : null;
@@ -163,7 +157,7 @@ class ExcelImporter {
       for (var i = 0; i < rows.length && i < 15; i++) {
         final m = <int, String>{};
         for (var c = 0; c < rows[i].length; c++) {
-          final h = norm(_cell(rows[i][c]));
+          final h = norm(rows[i][c]);
           if (h.isEmpty) continue;
           for (final e in fields.entries) {
             if (m.containsValue(e.key)) continue;
@@ -184,7 +178,7 @@ class ExcelImporter {
         final rec = <String, String>{};
         colField.forEach((c, f) {
           if (c < rows[i].length) {
-            final v = _cell(rows[i][c]);
+            final v = rows[i][c];
             if (v.isNotEmpty) rec[f] = v;
           }
         });
@@ -645,17 +639,11 @@ class GradesExcel {
 
   /// يختار ملف الدرجات (من الهاتف أو Google Drive) ويقرأ صفوفه.
   static Future<GradeFile?> pick() async {
-    final r = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: const ['xlsx'],
-      withData: true,
-    );
-    final bytes = r?.files.single.bytes;
-    if (bytes == null) return null;
-    final x = Excel.decodeBytes(bytes);
+    final sheets = await XlsxReader.pick();
+    if (sheets == null) return null;
     final out = <GradeRow>[];
     final headerMax = <String, double>{};
-    for (final sheet in x.tables.values) {
+    for (final sheet in sheets) {
       final rows = sheet.rows;
       int headerAt = -1;
       Map<int, String> colField = {};
@@ -663,7 +651,7 @@ class GradesExcel {
         final m = <int, String>{};
         final mx = <String, double>{};
         for (var c = 0; c < rows[i].length; c++) {
-          final raw = ExcelImporter.cellText(rows[i][c]);
+          final raw = rows[i][c];
           final h = norm(raw.split('(').first.replaceAll('\n', ' '));
           if (h.isEmpty) continue;
           for (final e in _gradeHeaders.entries) {
@@ -690,7 +678,7 @@ class GradesExcel {
         final marks = <String, double?>{};
         colField.forEach((c, f) {
           if (c >= rows[i].length) return;
-          final v = ExcelImporter.cellText(rows[i][c]);
+          final v = rows[i][c];
           if (f == 'id') {
             if (v.isNotEmpty) id = v;
           } else if (v.isNotEmpty) {

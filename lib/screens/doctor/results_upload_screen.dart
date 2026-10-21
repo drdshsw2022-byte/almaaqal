@@ -82,7 +82,9 @@ class _ResultsUploadScreenState extends State<ResultsUploadScreen> {
           : null;
     } catch (e) {
       _file = null;
-      _fileError = 'تعذّرت قراءة الملف. تأكد أنه بصيغة xlsx.';
+      _fileError = e is AppException
+          ? e.message
+          : 'تعذّرت قراءة الملف: $e';
     }
     await _analyze();
   }

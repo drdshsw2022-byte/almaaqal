@@ -215,7 +215,7 @@ class _GradesScreenState extends State<GradesScreen> {
     try {
       file = await GradesExcel.pick();
     } catch (e) {
-      if (mounted) showSnack(context, 'تعذّرت قراءة الملف', error: true);
+      if (mounted) showSnack(context, friendlyError(e), error: true);
       return;
     }
     if (file == null || !mounted) return;

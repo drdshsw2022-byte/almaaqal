@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../data/repo.dart';
 import '../../models.dart';
 import '../../services/nfc_service.dart';
+import '../common/nfc_test_screen.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/reports_screen.dart';
@@ -95,6 +96,8 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
 
   Future<void> _setMode(_Mode m) async {
     if (m == _mode) return;
+    if (m == _Mode.nfc) _nfcAvailable = await NfcService.isAvailable();
+    if (!mounted) return;
     if (m == _Mode.nfc && !_nfcAvailable) {
       showSnack(context, 'هذا الهاتف لا يدعم NFC أو أنه مطفأ من الإعدادات',
           error: true);
@@ -109,6 +112,17 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     });
     if (m != _Mode.qr) await old?.dispose();
     if (m == _Mode.nfc) {
+      await NfcService.startReading(
+          _onNfc, (e) => _show(_Result(false, 'NFC', e)));
+    }
+  }
+
+  Future<void> _openNfcTest() async {
+    await NfcService.stopReading();
+    if (!mounted) return;
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (_) => const NfcTestScreen()));
+    if (mounted && _mode == _Mode.nfc) {
       await NfcService.startReading(
           _onNfc, (e) => _show(_Result(false, 'NFC', e)));
     }
@@ -142,6 +156,11 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
   }
 
   void _onNfc(NfcRead r) {
+    if (r.phoneWithoutId) {
+      _show(_Result(false, 'هاتف بلا هوية',
+          'على هاتف الطالب: افتح تطبيق جامعة المعقل وسجّل الدخول برقمه المعرفي مرة واحدة، وأبقِ الشاشة مضاءة ثم قرّبه مجدداً'));
+      return;
+    }
     if (r.payload != null) {
       _handleCode(r.payload!, 'nfc');
     } else if (r.uid != null) {
@@ -469,8 +488,16 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                     color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w700)),
-            const Text('القراءة مستمرة لكل الطلاب',
+            const Text('القراءة مستمرة لكل الطلاب • ثبّتها ثانيتين',
                 style: TextStyle(color: Colors.white70)),
+            if (_mode == _Mode.nfc)
+              TextButton.icon(
+                onPressed: _openNfcTest,
+                icon: const Icon(Icons.build_circle_outlined,
+                    color: AppColors.gold),
+                label: const Text('لا تعمل؟ اختبار NFC',
+                    style: TextStyle(color: AppColors.gold)),
+              ),
           ],
         ),
       );
