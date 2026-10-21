@@ -70,6 +70,18 @@ class _StudentHomeState extends State<StudentHome> {
           if (me.deptId != null || recs.containsKey(courses[i].id))
             _CourseGrades(courses[i], schemes[i], recs[courses[i].id])
       ];
+      // نتائج رفعها الدكتور لمواد خارج قائمة الفصل الحالي تظهر أيضاً
+      final shownIds = _grades.map((g) => g.course.id).toSet();
+      final extraIds =
+          recs.keys.where((id) => !shownIds.contains(id)).toList();
+      if (extraIds.isNotEmpty) {
+        final all = {for (final c in await repo.courses()) c.id: c};
+        for (final id in extraIds) {
+          final c = all[id];
+          if (c == null) continue;
+          _grades.add(_CourseGrades(c, await repo.scheme(id), recs[id]));
+        }
+      }
       _lessons = [
         for (var i = 0; i < courses.length; i++)
           for (final l in lessons[i]) (courses[i], l)

@@ -10,6 +10,7 @@ import '../common/reports_screen.dart';
 import '../common/lessons_screen.dart';
 import 'grades_screen.dart';
 import 'live_session_screen.dart';
+import 'results_upload_screen.dart';
 
 class DoctorHome extends StatefulWidget {
   /// true عند فتحها من لوحة الإدارة (رئيس قسم/عميد يدرّس).
@@ -255,6 +256,7 @@ class _DoctorHomeState extends State<DoctorHome> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   ...active.map(_activeBanner),
+                  _resultsCard(),
                   SectionTitle(
                     'موادي • ${_allTerms ? 'كل الفصول' : termName(AppState.settings.currentTerm)}',
                     trailing: TextButton(
@@ -290,6 +292,55 @@ class _DoctorHomeState extends State<DoctorHome> {
       ),
     );
   }
+
+  Future<void> _openResults([Course? c]) async {
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                ResultsUploadScreen(myCourses: _courses, initialCourse: c)));
+    if (mounted) _load();
+  }
+
+  Widget _resultsCard() => Card(
+        margin: const EdgeInsets.only(top: 8, bottom: 4),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _openResults(),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                      gradient: AppColors.tilePalette[2],
+                      borderRadius: BorderRadius.circular(14)),
+                  child: const Icon(Icons.cloud_upload_rounded,
+                      color: Colors.white, size: 28),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('رفع نتائج الطلبة',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
+                      Text(
+                          'ملف Excel بصيغة سجل النتائج التفصيلي، يُزامَن ويظهر في «الدرجات» لدى الطالب',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.muted)),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_left),
+              ],
+            ),
+          ),
+        ),
+      );
 
   Widget _smallBtn(IconData i, String t, Widget Function() page) => Expanded(
         child: OutlinedButton.icon(
@@ -438,6 +489,15 @@ class _DoctorHomeState extends State<DoctorHome> {
                     _smallBtn(Icons.insights, 'الغياب',
                         () => CourseReportScreen(course: c)),
                   ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton.icon(
+                    onPressed: () => _openResults(c),
+                    icon: const Icon(Icons.cloud_upload_rounded),
+                    label: const Text('رفع ملف نتائج الطلبة لهذه المادة'),
+                  ),
                 ),
               ],
             ),
