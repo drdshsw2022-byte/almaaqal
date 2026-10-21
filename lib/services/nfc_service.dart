@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:nfc_manager/nfc_manager.dart';
@@ -65,11 +66,76 @@ class NfcService {
   static List<String> _techs(NfcTag tag) =>
       tag.data.keys.map((k) => '$k').toList();
 
+  /// نص هوية المعقل المكتوب على البطاقة (NDEF) إن وُجد.
+  static String? _ndefText(NfcTag tag) {
+    try {
+      final msg = Ndef.from(tag)?.cachedMessage;
+      if (msg == null) return null;
+      for (final r in msg.records) {
+        final p = r.payload;
+        if (p.isEmpty) continue;
+        String t;
+        if (r.typeNameFormat == NdefTypeNameFormat.nfcWellknown &&
+            r.type.length == 1 &&
+            r.type[0] == 0x54) {
+          final lang = p[0] & 0x3F;
+          t = utf8.decode(p.sublist(1 + lang), allowMalformed: true);
+        } else {
+          t = utf8.decode(p, allowMalformed: true);
+        }
+        if (t.startsWith(AppConfig.studentCodePrefix)) return t.trim();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// يكتب رمز هوية الطالب على البطاقة (NDEF) لتُقرأ على أي هاتف دون ربط مسبق.
+  static Future<void> writeCode(NfcTag tag, String code) async {
+    final msg = NdefMessage([NdefRecord.createText(code)]);
+    final ndef = Ndef.from(tag);
+    if (ndef != null) {
+      if (!ndef.isWritable) throw Exception('البطاقة محمية من الكتابة');
+      await ndef.write(msg);
+      return;
+    }
+    final f = NdefFormatable.from(tag);
+    if (f != null) {
+      await f.format(msg);
+      return;
+    }
+    throw Exception('هذه البطاقة لا تدعم الكتابة');
+  }
+
+  /// جلسة قراءة تمرّر الوسيط الخام أيضاً (للربط/الكتابة المتتابعة).
+  static Future<void> startTagSession(
+      Future<void> Function(NfcTag tag, NfcRead r) onTag,
+      void Function(String e) onError) async {
+    try {
+      await NfcManager.instance.stopSession();
+    } catch (_) {}
+    try {
+      await NfcManager.instance.startSession(onDiscovered: (tag) async {
+        try {
+          await onTag(tag, await _readTag(tag));
+        } catch (e) {
+          onError('$e'.replaceFirst('Exception: ', ''));
+        }
+      });
+    } catch (e) {
+      onError('تعذّر تشغيل قارئ NFC: $e');
+    }
+  }
+
   /// يقرأ وسيطاً واحداً (هاتف طالب أو بطاقة) ويحدد نوعه.
   static Future<NfcRead> _readTag(NfcTag tag) async {
     final techs = _techs(tag);
     final uid = _identifier(tag);
     final log = StringBuffer('التقنيات: ${techs.join(', ')}\nUID: ${uid ?? '-'}');
+    final written = _ndefText(tag);
+    if (written != null) {
+      log.write('\nNDEF: $written');
+      return NfcRead(payload: written, uid: uid, info: '$log');
+    }
     final iso = IsoDep.from(tag);
     if (iso != null) {
       final aid = _hex(AppConfig.nfcAid);

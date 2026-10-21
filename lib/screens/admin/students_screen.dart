@@ -7,6 +7,7 @@ import '../../widgets/common.dart';
 import '../common/filters.dart';
 import '../common/student_report_screen.dart';
 import '../common/nfc_link.dart';
+import '../common/nfc_bulk_link_screen.dart';
 import '../common/password_tools.dart';
 import '../student/id_card_screen.dart';
 
@@ -242,6 +243,20 @@ class _StudentsScreenState extends State<StudentsScreen> {
     final list = _filtered;
     return Scaffold(
       appBar: gradientAppBar('الطلاب', actions: [
+        IconButton(
+          tooltip: 'ربط بطاقات NFC للمعروضين بالتتابع',
+          onPressed: _loading
+              ? null
+              : () async {
+                  await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) =>
+                              NfcBulkLinkScreen(students: _filtered)));
+                  _load();
+                },
+          icon: const Icon(Icons.nfc),
+        ),
         IconButton(
           tooltip: 'تعيين القسم للمعروضين',
           onPressed: _loading ? null : _bulkDept,

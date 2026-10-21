@@ -9,6 +9,7 @@ import '../../data/repo.dart';
 import '../../models.dart';
 import '../../services/nfc_service.dart';
 import '../common/nfc_test_screen.dart';
+import '../common/nfc_bulk_link_screen.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
 import '../common/reports_screen.dart';
@@ -112,6 +113,25 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     });
     if (m != _Mode.qr) await old?.dispose();
     if (m == _Mode.nfc) {
+      await NfcService.startReading(
+          _onNfc, (e) => _show(_Result(false, 'NFC', e)));
+    }
+  }
+
+  Future<void> _openBulkLink() async {
+    await NfcService.stopReading();
+    if (!mounted) return;
+    await Navigator.push(
+        context,
+        MaterialPageRoute(
+            builder: (_) => NfcBulkLinkScreen(
+                students: _eligible, title: 'ربط بطاقات طلبة المادة')));
+    // تحديث الطلبة بعد الربط
+    final all = await repo.students();
+    _byId = {for (final s in all) s.id: s};
+    _eligible = all.where(_s.appliesTo).toList()
+      ..sort((a, b) => a.name.compareTo(b.name));
+    if (mounted && _mode == _Mode.nfc) {
       await NfcService.startReading(
           _onNfc, (e) => _show(_Result(false, 'NFC', e)));
     }
@@ -467,7 +487,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
     final scanner = _scanner;
     if (_mode == _Mode.nfc || scanner == null) {
       return Container(
-        height: 240,
+        height: 320,
         decoration: BoxDecoration(
           gradient: AppColors.mainGradient,
           borderRadius: BorderRadius.circular(24),
@@ -490,6 +510,13 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
                     fontWeight: FontWeight.w700)),
             const Text('القراءة مستمرة لكل الطلاب • ثبّتها ثانيتين',
                 style: TextStyle(color: Colors.white70)),
+            if (_mode == _Mode.nfc)
+              TextButton.icon(
+                onPressed: _openBulkLink,
+                icon: const Icon(Icons.link, color: Colors.white),
+                label: const Text('ربط بطاقات طلبة المحاضرة',
+                    style: TextStyle(color: Colors.white)),
+              ),
             if (_mode == _Mode.nfc)
               TextButton.icon(
                 onPressed: _openNfcTest,

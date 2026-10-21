@@ -50,6 +50,7 @@ const _fields = <ImportKind, Map<String, List<String>>>{
     'dept': ['القسم', 'department', 'dept'],
     'email': ['البريد الجامعي', 'البريد', 'البريد الالكتروني', 'الايميل', 'الايميل الجامعي', 'email'],
     'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'الباسورد', 'الرمز السري', 'password'],
+    'nfc': ['رقم البطاقه', 'معرف البطاقه', 'رمز البطاقه', 'nfc', 'uid', 'card uid', 'nfc uid'],
   },
   ImportKind.staff: {
     'email': ['البريد الجامعي', 'البريد', 'البريد الالكتروني', 'الايميل', 'الايميل الجامعي', 'email'],
@@ -82,8 +83,8 @@ const _fields = <ImportKind, Map<String, List<String>>>{
 /// صفوف القالب: العناوين + مثال.
 const _templates = <ImportKind, List<List<String>>>{
   ImportKind.students: [
-    ['الرقم المعرفي', 'اسم الطالب', 'القسم', 'المرحلة', 'الدوام', 'البريد الجامعي'],
-    ['1989616052', 'ابرار منخي لفته كزار', 'هندسة الذكاء الاصطناعي', '2', 'صباحي', '1989616052@almaaqal.edu.iq'],
+    ['الرقم المعرفي', 'اسم الطالب', 'القسم', 'المرحلة', 'الدوام', 'البريد الجامعي', 'رقم البطاقة'],
+    ['1989616052', 'ابرار منخي لفته كزار', 'هندسة الذكاء الاصطناعي', '2', 'صباحي', '1989616052@almaaqal.edu.iq', '96203CB2'],
   ],
   ImportKind.staff: [
     ['البريد الجامعي', 'الاسم', 'اسم المستخدم', 'كلمة المرور', 'الصفة', 'الكلية', 'القسم'],
@@ -289,6 +290,11 @@ class ExcelImporter {
     return (d != null && d.length == 1) ? d.first : null;
   }
 
+  static String? _uid(String? v) {
+    final t = (v ?? '').replaceAll(RegExp(r'[^0-9A-Fa-f]'), '').toUpperCase();
+    return t.isEmpty ? null : t;
+  }
+
   static Future<ImportResult> _students(
       List<(int, Map<String, String>)> recs) async {
     final res = ImportResult();
@@ -330,7 +336,7 @@ class ExcelImporter {
         shift: r['shift'] != null ? parseShift(r['shift']) : (old?.shift ?? 'morning'),
         deptId: deptId,
         email: email ?? old?.email,
-        nfcUid: old?.nfcUid,
+        nfcUid: _uid(r['nfc']) ?? old?.nfcUid,
         activated: old?.activated ?? false,
         initPw: r['password'] != null
             ? hashPassword(id, r['password']!)
