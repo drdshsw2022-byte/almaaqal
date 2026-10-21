@@ -12,7 +12,8 @@ Future<void> resetPasswordFlow(BuildContext context,
   final ctrl = TextEditingController();
   final isStudent = student != null;
   final name = student?.name ?? staff!.name;
-  final username = student?.id ?? staff!.username;
+  final username = student?.id ?? staff!.loginName;
+  final authName = student?.id ?? staff!.username;
   final def = isStudent ? 'الرقم المعرفي ($username)' : AppConfig.defaultStaffPassword;
   final ok = await showDialog<bool>(
     context: context,
@@ -44,7 +45,7 @@ Future<void> resetPasswordFlow(BuildContext context,
                 ),
                 child: Text(
                   'خطوة إضافية مطلوبة في Firebase Console ← Authentication: احذف المستخدم '
-                  '${isStudent ? '$username@${AppConfig.studentAuthDomain}' : '$username@${AppConfig.staffAuthDomain}'} '
+                  '${isStudent ? '$authName@${AppConfig.studentAuthDomain}' : '$authName@${AppConfig.staffAuthDomain}'} '
                   'حتى يتمكن من الدخول بكلمة المرور الأولية.',
                   style: const TextStyle(fontSize: 12, height: 1.5),
                 ),

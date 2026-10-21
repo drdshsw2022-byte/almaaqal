@@ -228,6 +228,7 @@ class Staff {
   final List<String> courseIds;
   final bool activated;
   final String? initPw;
+  final String? alias; // اسم مستخدم مختار (مثل doc01) بدل بداية البريد
 
   Staff({
     required String id,
@@ -238,7 +239,14 @@ class Staff {
     this.courseIds = const [],
     this.activated = false,
     this.initPw,
-  }) : id = id.trim().toLowerCase();
+    String? alias,
+  })  : id = id.trim().toLowerCase(),
+        alias = (alias == null || alias.trim().isEmpty)
+            ? null
+            : alias.trim().toLowerCase();
+
+  /// اسم المستخدم المعروض للدخول.
+  String get loginName => alias ?? username;
 
   /// اسم المستخدم = الجزء قبل @ من البريد الجامعي.
   String get username => id.split('@').first;
@@ -255,9 +263,11 @@ class Staff {
     List<String>? courseIds,
     bool? activated,
     String? initPw,
+    String? alias,
   }) =>
       Staff(
         id: id,
+        alias: alias ?? this.alias,
         name: name ?? this.name,
         role: role ?? this.role,
         collegeId: collegeId ?? this.collegeId,
@@ -277,6 +287,7 @@ class Staff {
         'courseIds': courseIds,
         'activated': activated,
         'initPw': initPw,
+        'alias': alias,
       };
 
   factory Staff.fromMap(Map<String, dynamic> m) => Staff(
@@ -288,6 +299,7 @@ class Staff {
         courseIds: asStrList(m['courseIds']),
         activated: m['activated'] == true,
         initPw: asStrOrNull(m['initPw']),
+        alias: asStrOrNull(m['alias']),
       );
 }
 

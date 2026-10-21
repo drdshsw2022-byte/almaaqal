@@ -137,9 +137,20 @@ class FirebaseRepo implements Repo {
 
   @override
   Future<LoginResult> signInWithPassword(String username, String password) async {
-    final r = resolveUsername(username);
+    var r = resolveUsername(username);
     if (r.studentId == null && r.staffEmail == null) {
       throw AppException('أدخل اسم المستخدم');
+    }
+    // اسم مستخدم مختار (مثل doc01) ← البريد الجامعي
+    final typed = username.trim().toLowerCase();
+    if (r.staffEmail != null && !typed.contains('@')) {
+      try {
+        final a = await _db.collection('usernames').doc(typed).get();
+        final e = a.data()?['email'];
+        if (e is String && e.isNotEmpty) {
+          r = (studentId: null, staffEmail: e.toLowerCase());
+        }
+      } catch (_) {}
     }
     if (r.staffEmail != null && !AppConfig.isUniversityEmail(r.staffEmail!)) {
       throw AppException('اسم المستخدم يجب أن يكون من بريد الجامعة');
@@ -349,6 +360,30 @@ class FirebaseRepo implements Repo {
             .toList(),
         onProgress,
         'الطلاب');
+    if (d.staff.isNotEmpty) {
+      await _batchWrite(
+          'staff',
+          d.staff
+              .map((x) => {
+                    'id': x.id,
+                    'email': x.id,
+                    'name': x.name,
+                    'role': x.role,
+                    'alias': x.alias,
+                    'initPw': x.initPw,
+                  })
+              .toList(),
+          onProgress,
+          'الكادر');
+      await _batchWrite(
+          'usernames',
+          d.staff
+              .where((x) => x.alias != null)
+              .map((x) => {'id': x.alias, 'email': x.id})
+              .toList(),
+          onProgress,
+          'أسماء المستخدمين');
+    }
     await _db
         .collection('settings')
         .doc('app')
@@ -488,7 +523,12 @@ class FirebaseRepo implements Repo {
   }
 
   @override
-  Future<void> saveStaff(Staff s) => _staff.doc(s.id).set(s.toMap());
+  Future<void> saveStaff(Staff s) async {
+    await _staff.doc(s.id).set(s.toMap());
+    if (s.alias != null) {
+      await _db.collection('usernames').doc(s.alias).set({'email': s.id});
+    }
+  }
 
   @override
   Future<void> deleteStaff(String id) => _staff.doc(id).delete();
@@ -605,8 +645,14 @@ class FirebaseRepo implements Repo {
   }
 
   @override
-  Future<void> saveStaffBulk(List<Staff> list) =>
-      _bulk('staff', list.map((s) => s.toMap()).toList());
+  Future<void> saveStaffBulk(List<Staff> list) async {
+    await _bulk('staff', list.map((s) => s.toMap()).toList());
+    final aliases = list
+        .where((s) => s.alias != null)
+        .map((s) => {'id': s.alias, 'email': s.id})
+        .toList();
+    if (aliases.isNotEmpty) await _bulk('usernames', aliases);
+  }
 
   // ---------------- الدرجات والدروس ----------------
   @override

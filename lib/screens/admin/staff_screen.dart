@@ -75,6 +75,7 @@ class _StaffScreenState extends State<StaffScreen> {
   Future<void> _edit([Staff? s]) async {
     final email = TextEditingController(text: s?.email);
     final initPwCtrl = TextEditingController();
+    final aliasCtrl = TextEditingController(text: s?.alias);
     final name = TextEditingController(text: s?.name);
     String role = s?.role ?? 'doctor';
     final sc = AppState.scope.deptIds;
@@ -120,6 +121,13 @@ class _StaffScreenState extends State<StaffScreen> {
                     decoration: const InputDecoration(
                         labelText: 'البريد الجامعي (للدخول)',
                         hintText: 'name@${AppConfig.universityDomain}')),
+                const SizedBox(height: 10),
+                TextField(
+                    controller: aliasCtrl,
+                    textDirection: TextDirection.ltr,
+                    decoration: const InputDecoration(
+                        labelText: 'اسم المستخدم (اختياري)',
+                        helperText: 'مثل doc01 • فارغ = بداية البريد الجامعي')),
                 if (s == null) ...[
                   const SizedBox(height: 10),
                   TextField(
@@ -225,6 +233,7 @@ class _StaffScreenState extends State<StaffScreen> {
     }
     final staff = Staff(
       activated: s?.activated ?? false,
+      alias: aliasCtrl.text.trim().isEmpty ? null : aliasCtrl.text.trim(),
       initPw: initPwCtrl.text.trim().isNotEmpty
           ? hashPassword(e.split('@').first, initPwCtrl.text.trim())
           : s?.initPw,
@@ -243,7 +252,7 @@ class _StaffScreenState extends State<StaffScreen> {
     }
     await runBusy(context, () => repo.saveStaff(staff),
         success: s == null
-            ? 'تمت الإضافة • اسم المستخدم: ${staff.username} • كلمة المرور الأولية: ${initPwCtrl.text.trim().isEmpty ? AppConfig.defaultStaffPassword : initPwCtrl.text.trim()}'
+            ? 'تمت الإضافة • اسم المستخدم: ${staff.loginName} • كلمة المرور الأولية: ${initPwCtrl.text.trim().isEmpty ? AppConfig.defaultStaffPassword : initPwCtrl.text.trim()}'
             : 'تم الحفظ');
     _load();
   }
@@ -324,7 +333,7 @@ class _StaffScreenState extends State<StaffScreen> {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('${roleName(s.role)} • اسم المستخدم: ${s.username}${s.activated ? '' : ' • لم يفعّل'}',
+            Text('${roleName(s.role)} • اسم المستخدم: ${s.loginName}${s.activated ? '' : ' • لم يفعّل'}',
                 style: const TextStyle(fontSize: 12)),
             if (s.role == 'doctor' || s.courseIds.isNotEmpty)
               Text(

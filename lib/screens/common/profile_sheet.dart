@@ -49,7 +49,7 @@ Future<void> showProfileSheet(BuildContext context) {
             Center(child: Pill(roleLabel)),
             const SizedBox(height: 16),
             _row(Icons.person_outline, 'اسم المستخدم',
-                u.student?.id ?? u.staff!.username),
+                u.student?.id ?? u.staff!.loginName),
             _row(Icons.alternate_email, 'البريد', u.email ?? '—'),
             if (u.student != null) ...[
               _row(Icons.badge_outlined, 'الرقم المعرفي', u.student!.id),

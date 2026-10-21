@@ -27,7 +27,7 @@ class LocalRepo implements Repo {
   String? _currentEmail; // بريد أو "student:<id>"
   bool _usedInitial = false;
 
-  static const _key = 'almaqal_local_db_v4';
+  static const _key = 'almaqal_local_db_v5';
 
   @override
   bool get isDemo => true;
@@ -123,6 +123,9 @@ class LocalRepo implements Repo {
     for (final s in d.students) {
       _students[s.id] = s;
     }
+    for (final s in d.staff) {
+      _staff[s.id] = s;
+    }
     final admin = Staff(
         id: AppConfig.demoAdminEmail, name: 'مدير النظام', role: 'admin');
     _staff[admin.id] = admin;
@@ -205,7 +208,9 @@ class LocalRepo implements Repo {
       final s = _students[r.studentId];
       if (s != null) u = AppUser.student(s);
     } else if (r.staffEmail != null) {
-      final st = _staff[r.staffEmail];
+      final alias = username.trim().toLowerCase();
+      final st = _staff[r.staffEmail] ??
+          _staff.values.where((x) => x.alias == alias).firstOrNull;
       if (st != null) u = AppUser.staff(st);
     }
     if (u == null) throw AppException('اسم المستخدم غير موجود');
@@ -293,6 +298,7 @@ class LocalRepo implements Repo {
         deptId: s.deptId,
         courseIds: s.courseIds,
         activated: false,
+        alias: s.alias,
         initPw: initPw == null ? null : hashPassword(s.username, initPw));
     await _save();
   }
@@ -346,6 +352,9 @@ class LocalRepo implements Repo {
               shift: s.shift,
               deptId: s.deptId ?? old.deptId,
               email: s.email ?? old.email);
+    }
+    for (final x in d.staff) {
+      _staff.putIfAbsent(x.id, () => x);
     }
     await _save();
     onProgress('تمت التهيئة');

@@ -1,0 +1,252 @@
+[
+ {
+  "id": "doc0168@almaaqal.edu.iq",
+  "email": "doc0168@almaaqal.edu.iq",
+  "name": "أ.د. أحمد علي الحسان",
+  "role": "doctor",
+  "alias": "doc01",
+  "initPw": "0447f7f9099d133c8730948f269fe988b22b6c481e75f321a294beaf7b7ad362",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0268@almaaqal.edu.iq",
+  "email": "doc0268@almaaqal.edu.iq",
+  "name": "د. محمد جاسم المحمداوي",
+  "role": "doctor",
+  "alias": "doc02",
+  "initPw": "345592ab31c3f10ea397c754cd84b790e3dcf7f63fa2b6ea174b13770d3a1a72",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0368@almaaqal.edu.iq",
+  "email": "doc0368@almaaqal.edu.iq",
+  "name": "د. زينب عبد الحسين",
+  "role": "doctor",
+  "alias": "doc03",
+  "initPw": "c9c0f6407d931b7e36db566697f0364662d08567367dba4cb5edf24fac2fdb33",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0468@almaaqal.edu.iq",
+  "email": "doc0468@almaaqal.edu.iq",
+  "name": "د. حيدر كريم العبادي",
+  "role": "doctor",
+  "alias": "doc04",
+  "initPw": "942872b63e864e4cae00dcfb5d7708bbb6abd5993d3b703d544d9eb0256afe73",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0568@almaaqal.edu.iq",
+  "email": "doc0568@almaaqal.edu.iq",
+  "name": "د. فاطمة عباس الصالح",
+  "role": "doctor",
+  "alias": "doc05",
+  "initPw": "6293cb787015a2bd97ccb10f116c204b6e98f59f8cef3a2781aad584e4f1cef9",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0668@almaaqal.edu.iq",
+  "email": "doc0668@almaaqal.edu.iq",
+  "name": "د. مصطفى صادق الموسوي",
+  "role": "doctor",
+  "alias": "doc06",
+  "initPw": "3fd7c566ba980b679f5e8c392fd5cbac81ac21e3fee30125891fc931bd3d4d19",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0768@almaaqal.edu.iq",
+  "email": "doc0768@almaaqal.edu.iq",
+  "name": "د. مريم خالد التميمي",
+  "role": "doctor",
+  "alias": "doc07",
+  "initPw": "f0be0fa0e1bd3eb2aa8080021666110f4d5192ef526bed6ebc5be6165bde647c",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0868@almaaqal.edu.iq",
+  "email": "doc0868@almaaqal.edu.iq",
+  "name": "د. حسين فاضل المالكي",
+  "role": "doctor",
+  "alias": "doc08",
+  "initPw": "68c83a9c447a993fd7a2991bef9db9fff1f3d93adab24b09af75f1c4ff046256",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc0968@almaaqal.edu.iq",
+  "email": "doc0968@almaaqal.edu.iq",
+  "name": "د. سارة عادل السعدي",
+  "role": "doctor",
+  "alias": "doc09",
+  "initPw": "d6a2ff27b2afa0518f6fe778abccfdb917184c0829ddb6aa21ebc4d5f474705c",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1068@almaaqal.edu.iq",
+  "email": "doc1068@almaaqal.edu.iq",
+  "name": "د. عمر فاروق الراوي",
+  "role": "doctor",
+  "alias": "doc10",
+  "initPw": "e19240aa3bd4340aa85960fdbc28faae967872d5c8cea3b6a5451ced661b4c74",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1168@almaaqal.edu.iq",
+  "email": "doc1168@almaaqal.edu.iq",
+  "name": "د. نادين يوسف الخفاجي",
+  "role": "doctor",
+  "alias": "doc11",
+  "initPw": "439b8b86f0bb230e0ad12ee951125c945d5ad3c357af6ce29aa02321613bced4",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1268@almaaqal.edu.iq",
+  "email": "doc1268@almaaqal.edu.iq",
+  "name": "د. علي حسن الزبيدي",
+  "role": "doctor",
+  "alias": "doc12",
+  "initPw": "6b96ba7b082ede5324617b295d2fd3c1af64556b3e9426a5779942d704b08c2f",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1368@almaaqal.edu.iq",
+  "email": "doc1368@almaaqal.edu.iq",
+  "name": "د. ريم طارق الجبوري",
+  "role": "doctor",
+  "alias": "doc13",
+  "initPw": "746f94342e3353b9b19c0a57053783b65b79b6970559becc1708c1135179ee19",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1468@almaaqal.edu.iq",
+  "email": "doc1468@almaaqal.edu.iq",
+  "name": "د. خالد محمود الشمري",
+  "role": "doctor",
+  "alias": "doc14",
+  "initPw": "779f9082c751befb0570f741b88c73409cb4c820342fd1979fe46276f6858c39",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1568@almaaqal.edu.iq",
+  "email": "doc1568@almaaqal.edu.iq",
+  "name": "د. هدى إبراهيم الدليمي",
+  "role": "doctor",
+  "alias": "doc15",
+  "initPw": "38f23d3f0ac2969cd711364159d6a718082586b5f3e4b5eb4eb2ea658d4e5f0e",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1668@almaaqal.edu.iq",
+  "email": "doc1668@almaaqal.edu.iq",
+  "name": "د. يوسف أحمد الفتلاوي",
+  "role": "doctor",
+  "alias": "doc16",
+  "initPw": "1509c9967be9dece414bbdc6f178075bbb6834060cee74d308d31d0ae83dd5cf",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1768@almaaqal.edu.iq",
+  "email": "doc1768@almaaqal.edu.iq",
+  "name": "د. أمل كاظم العلي",
+  "role": "doctor",
+  "alias": "doc17",
+  "initPw": "d169c81aa1ec306cd44b1c88381dbf1bea4d708e2c43aef445c3119c782e9c07",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1868@almaaqal.edu.iq",
+  "email": "doc1868@almaaqal.edu.iq",
+  "name": "د. حمزة ثامر العامري",
+  "role": "doctor",
+  "alias": "doc18",
+  "initPw": "d844e7053fbc57dff6aa362262ec38731a37e634d2e86bfeec600402d3c488a8",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc1968@almaaqal.edu.iq",
+  "email": "doc1968@almaaqal.edu.iq",
+  "name": "د. نور الهدى صالح",
+  "role": "doctor",
+  "alias": "doc19",
+  "initPw": "8dea89b8415886eef7f5d1c756dd48acae7ca2d7440f60b053806744f2afb336",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2068@almaaqal.edu.iq",
+  "email": "doc2068@almaaqal.edu.iq",
+  "name": "د. باقر جليل البياتي",
+  "role": "doctor",
+  "alias": "doc20",
+  "initPw": "d8ef52b7f5afb4a427f3a359a8477f62fc12765e642ed76df3b759d50c7bb040",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2168@almaaqal.edu.iq",
+  "email": "doc2168@almaaqal.edu.iq",
+  "name": "د. مروة سلام الدراجي",
+  "role": "doctor",
+  "alias": "doc21",
+  "initPw": "abd76bc8863a98b6f6f88cd8937025c700560dbfc6ab29dfa87943411696f7ab",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2268@almaaqal.edu.iq",
+  "email": "doc2268@almaaqal.edu.iq",
+  "name": "د. كرار حيدر الأسدي",
+  "role": "doctor",
+  "alias": "doc22",
+  "initPw": "d034ee135879e44a10e359510d02cf6d9eba47e1a2412e8a44cc6346929c26fa",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2368@almaaqal.edu.iq",
+  "email": "doc2368@almaaqal.edu.iq",
+  "name": "د. زهراء عبد الرضا",
+  "role": "doctor",
+  "alias": "doc23",
+  "initPw": "8c3aa84d6394c99cd50066c0554e4b37c1c5e5106230cf951bb05f273e2f05a2",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2468@almaaqal.edu.iq",
+  "email": "doc2468@almaaqal.edu.iq",
+  "name": "د. وسام عبد الأمير",
+  "role": "doctor",
+  "alias": "doc24",
+  "initPw": "e8afa9a6e9b0521219697b91a871832f99531ad7bf7770dc4fe45557ecb12370",
+  "courseIds": [],
+  "activated": false
+ },
+ {
+  "id": "doc2568@almaaqal.edu.iq",
+  "email": "doc2568@almaaqal.edu.iq",
+  "name": "د. رانيا شاكر العبيدي",
+  "role": "doctor",
+  "alias": "doc25",
+  "initPw": "89b99d6529f44b13abd472bb1d4e66d3aad12aa4ec90709b5cb8277a9f5c7c90",
+  "courseIds": [],
+  "activated": false
+ }
+]

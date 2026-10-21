@@ -108,7 +108,9 @@ class SeedData {
   final List<Department> departments;
   final List<Course> courses;
   final List<Student> students;
-  SeedData(this.colleges, this.departments, this.courses, this.students);
+  final List<Staff> staff;
+  SeedData(this.colleges, this.departments, this.courses, this.students,
+      this.staff);
 
   static Future<SeedData> load() async {
     final structure = jsonDecode(
@@ -117,6 +119,11 @@ class SeedData {
         await rootBundle.loadString('assets/data/courses.json')) as List;
     final students = jsonDecode(
         await rootBundle.loadString('assets/data/students.json')) as List;
+    List staff = const [];
+    try {
+      staff = jsonDecode(await rootBundle.loadString('assets/data/staff.json'))
+          as List;
+    } catch (_) {}
     return SeedData(
       (structure['colleges'] as List)
           .map((e) => College.fromMap(Map<String, dynamic>.from(e)))
@@ -128,6 +135,7 @@ class SeedData {
       students
           .map((e) => Student.fromMap(Map<String, dynamic>.from(e)))
           .toList(),
+      staff.map((e) => Staff.fromMap(Map<String, dynamic>.from(e))).toList(),
     );
   }
 }

@@ -48,16 +48,17 @@ const _fields = <ImportKind, Map<String, List<String>>>{
     'stage': ['المرحلة', 'stage', 'level'],
     'shift': ['الدوام', 'shift'],
     'dept': ['القسم', 'department', 'dept'],
-    'email': ['البريد الجامعي', 'البريد', 'الايميل', 'الايميل الجامعي', 'email'],
-    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'password'],
+    'email': ['البريد الجامعي', 'البريد', 'البريد الالكتروني', 'الايميل', 'الايميل الجامعي', 'email'],
+    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'الباسورد', 'الرمز السري', 'password'],
   },
   ImportKind.staff: {
-    'email': ['البريد الجامعي', 'البريد', 'الايميل', 'الايميل الجامعي', 'email'],
-    'name': ['الاسم', 'الاسم الكامل', 'اسم التدريسي', 'name'],
+    'email': ['البريد الجامعي', 'البريد', 'البريد الالكتروني', 'الايميل', 'الايميل الجامعي', 'email'],
+    'name': ['الاسم', 'الاسم الكامل', 'اسم التدريسي', 'اسم الدكتور', 'اسم الاستاذ', 'name'],
+    'alias': ['اسم المستخدم', 'username', 'user'],
     'role': ['الصفه', 'الدور', 'المنصب', 'role'],
     'college': ['الكليه', 'college'],
     'dept': ['القسم', 'department', 'dept'],
-    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'password'],
+    'password': ['كلمه المرور', 'كلمه المرور الاوليه', 'الباسورد', 'الرمز السري', 'password'],
   },
   ImportKind.courses: {
     'dept': ['القسم', 'department', 'dept'],
@@ -85,9 +86,9 @@ const _templates = <ImportKind, List<List<String>>>{
     ['1989616052', 'ابرار منخي لفته كزار', 'هندسة الذكاء الاصطناعي', '2', 'صباحي', '1989616052@almaaqal.edu.iq'],
   ],
   ImportKind.staff: [
-    ['البريد الجامعي', 'الاسم', 'الصفة', 'الكلية', 'القسم'],
-    ['ahmed.ali@almaaqal.edu.iq', 'أ.م.د. أحمد علي', 'تدريسي', 'كلية الهندسة', 'هندسة الذكاء الاصطناعي'],
-    ['dean.eng@almaaqal.edu.iq', 'أ.د. عميد الكلية', 'عميد', 'كلية الهندسة', ''],
+    ['البريد الجامعي', 'الاسم', 'اسم المستخدم', 'كلمة المرور', 'الصفة', 'الكلية', 'القسم'],
+    ['ahmed.ali@almaaqal.edu.iq', 'أ.م.د. أحمد علي', 'doc30', 'MqProf#2024_30', 'تدريسي', 'كلية الهندسة', 'هندسة الذكاء الاصطناعي'],
+    ['dean.eng@almaaqal.edu.iq', 'أ.د. عميد الكلية', 'dean01', '', 'عميد', 'كلية الهندسة', ''],
   ],
   ImportKind.courses: [
     ['القسم', 'المرحلة', 'الكورس', 'رمز المقرر', 'اسم المادة بالعربية', 'اسم المادة بالإنجليزية', 'الساعات المعتمدة', 'ECTS', 'المتطلب السابق'],
@@ -410,6 +411,7 @@ class ExcelImporter {
         collegeId: c?.id ?? old?.collegeId,
         deptId: deptId ?? old?.deptId,
         courseIds: old?.courseIds ?? const [],
+        alias: r['alias'] ?? old?.alias,
         activated: old?.activated ?? false,
         initPw: r['password'] != null
             ? hashPassword(email.split('@').first, r['password']!)
