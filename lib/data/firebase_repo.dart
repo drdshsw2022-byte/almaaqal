@@ -113,10 +113,20 @@ class FirebaseRepo implements Repo {
       return d.exists ? AppUser.student(Student.fromMap(d.data()!)) : null;
     }
     if (e.endsWith('@${AppConfig.staffAuthDomain}')) {
-      final d = await _staff.doc('$local@${AppConfig.universityDomain}').get();
+      final d = await _staff.doc(await _staffDocFor(local)).get();
       return d.exists ? AppUser.staff(Staff.fromMap(d.data()!)) : null;
     }
     return _profileByEmail(e);
+  }
+
+  /// معرّف مستند الكادر لحساب كلمة مرور داخلي: عبر فهرس usernames أو بريد الجامعة.
+  Future<String> _staffDocFor(String local) async {
+    try {
+      final a = await _db.collection('usernames').doc(local).get();
+      final e = a.data()?['email'];
+      if (e is String && e.isNotEmpty) return e.toLowerCase();
+    } catch (_) {}
+    return '$local@${AppConfig.universityDomain}';
   }
 
   bool _isWrongCreds(FirebaseAuthException e) => const [
@@ -141,22 +151,29 @@ class FirebaseRepo implements Repo {
     if (r.studentId == null && r.staffEmail == null) {
       throw AppException('أدخل اسم المستخدم');
     }
-    // اسم مستخدم مختار (مثل doc01) ← البريد الجامعي
+    // اسم مستخدم مختار (مثل doc01) ← بريد الدكتور
     final typed = username.trim().toLowerCase();
+    String? aliasUsed;
     if (r.staffEmail != null && !typed.contains('@')) {
       try {
         final a = await _db.collection('usernames').doc(typed).get();
         final e = a.data()?['email'];
         if (e is String && e.isNotEmpty) {
           r = (studentId: null, staffEmail: e.toLowerCase());
+          aliasUsed = typed;
         }
       } catch (_) {}
     }
-    if (r.staffEmail != null && !AppConfig.isUniversityEmail(r.staffEmail!)) {
-      throw AppException('اسم المستخدم يجب أن يكون من بريد الجامعة');
+    if (r.staffEmail != null &&
+        aliasUsed == null &&
+        !AppConfig.isUniversityEmail(r.staffEmail!)) {
+      throw AppException('ادخل باسم المستخدم المخصص لك (مثل doc01)');
     }
-    final authEmail =
-        r.studentId != null ? _studentAuth(r.studentId!) : _staffAuth(r.staffEmail!);
+    final authEmail = r.studentId != null
+        ? _studentAuth(r.studentId!)
+        : (aliasUsed != null
+            ? '$aliasUsed@${AppConfig.staffAuthDomain}'
+            : _staffAuth(r.staffEmail!));
     final uname = r.studentId ?? r.staffEmail!.split('@').first;
     try {
       await _auth.signInWithEmailAndPassword(email: authEmail, password: password);
@@ -243,9 +260,7 @@ class FirebaseRepo implements Repo {
     if (e.endsWith('@${AppConfig.studentAuthDomain}')) {
       await _students.doc(local).update({'activated': true});
     } else {
-      await _staff
-          .doc('$local@${AppConfig.universityDomain}')
-          .update({'activated': true});
+      await _staff.doc(await _staffDocFor(local)).update({'activated': true});
     }
   }
 
@@ -526,7 +541,11 @@ class FirebaseRepo implements Repo {
   Future<void> saveStaff(Staff s) async {
     await _staff.doc(s.id).set(s.toMap());
     if (s.alias != null) {
-      await _db.collection('usernames').doc(s.alias).set({'email': s.id});
+      try {
+        await _db.collection('usernames').doc(s.alias).set({'email': s.id});
+      } catch (_) {
+        // فهرس أسماء المستخدمين تكتبه الإدارة العليا فقط
+      }
     }
   }
 

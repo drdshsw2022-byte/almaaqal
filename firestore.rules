@@ -17,8 +17,14 @@ service cloud.firestore {
     function isStaffPw() { return authEmail().matches('.*@pw[.]almaqal[.]app'); }
     function isStudentPw() { return authEmail().matches('.*@st[.]almaqal[.]app'); }
 
-    // البريد الجامعي المكافئ لهوية المستخدم
-    function email() { return isStaffPw() ? localPart() + '@almaaqal.edu.iq' : authEmail(); }
+    // بريد الكادر لحساب كلمة مرور داخلي: من فهرس usernames (مثل doc01) أو بريد الجامعة
+    function staffEmailFor(name) {
+      return exists(/databases/$(database)/documents/usernames/$(name))
+        ? get(/databases/$(database)/documents/usernames/$(name)).data.email
+        : name + '@almaaqal.edu.iq';
+    }
+    // البريد المكافئ لهوية المستخدم
+    function email() { return isStaffPw() ? staffEmailFor(localPart()) : authEmail(); }
 
     // المدير العام (عدّل القائمة لتطابق superAdminEmails في config.dart)
     function isSuperAdmin() {
@@ -103,7 +109,7 @@ service cloud.firestore {
     // فهرس أسماء المستخدمين المختارة (doc01 ← البريد) يُقرأ قبل تسجيل الدخول
     match /usernames/{name} {
       allow read: if true;
-      allow write: if isTop() || myRole() in ['dean', 'head'];
+      allow write: if isTop() && name != 'admin';
     }
 
     match /sessions/{id} {

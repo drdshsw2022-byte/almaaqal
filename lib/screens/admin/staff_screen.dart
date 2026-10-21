@@ -119,7 +119,7 @@ class _StaffScreenState extends State<StaffScreen> {
                     keyboardType: TextInputType.emailAddress,
                     textDirection: TextDirection.ltr,
                     decoration: const InputDecoration(
-                        labelText: 'البريد الجامعي (للدخول)',
+                        labelText: 'البريد الإلكتروني',
                         hintText: 'name@${AppConfig.universityDomain}')),
                 const SizedBox(height: 10),
                 TextField(
@@ -221,9 +221,16 @@ class _StaffScreenState extends State<StaffScreen> {
       showSnack(context, 'أدخل الاسم والبريد الجامعي', error: true);
       return;
     }
-    if (!AppConfig.isAllowedEmail(e)) {
-      showSnack(context,
-          'يجب أن يكون البريد جامعياً (@${AppConfig.universityDomain})',
+    if (!AppConfig.isValidEmail(e)) {
+      showSnack(context, 'صيغة البريد غير صحيحة', error: true);
+      return;
+    }
+    if (aliasCtrl.text.trim().toLowerCase() == AppConfig.bootstrapAdminUsername) {
+      showSnack(context, 'اسم المستخدم "admin" محجوز لمدير النظام', error: true);
+      return;
+    }
+    if (!AppConfig.isUniversityEmail(e) && aliasCtrl.text.trim().isEmpty) {
+      showSnack(context, 'البريد من خارج الجامعة: حدد له اسم مستخدم للدخول',
           error: true);
       return;
     }

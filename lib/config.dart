@@ -52,6 +52,10 @@ class AppConfig {
   static bool isUniversityEmail(String email) =>
       email.toLowerCase().trim().endsWith('@$universityDomain');
 
+  /// صيغة بريد صحيحة (لبريد الكادر الذي قد يكون خارج نطاق الجامعة).
+  static bool isValidEmail(String email) =>
+      RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email.trim());
+
   static bool isAllowedEmail(String email) {
     final e = email.toLowerCase().trim();
     return isUniversityEmail(e) || superAdminEmails.contains(e);

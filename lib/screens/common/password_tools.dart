@@ -13,7 +13,7 @@ Future<void> resetPasswordFlow(BuildContext context,
   final isStudent = student != null;
   final name = student?.name ?? staff!.name;
   final username = student?.id ?? staff!.loginName;
-  final authName = student?.id ?? staff!.username;
+  final authName = student?.id ?? (staff!.alias ?? staff!.username);
   final def = isStudent ? 'الرقم المعرفي ($username)' : AppConfig.defaultStaffPassword;
   final ok = await showDialog<bool>(
     context: context,

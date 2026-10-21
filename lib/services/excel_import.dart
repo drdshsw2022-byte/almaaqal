@@ -368,8 +368,12 @@ class ExcelImporter {
         res.error(row, 'البريد والاسم مطلوبان');
         continue;
       }
-      if (!AppConfig.isAllowedEmail(email)) {
-        res.error(row, 'البريد ليس جامعياً: $email');
+      if (!AppConfig.isValidEmail(email)) {
+        res.error(row, 'صيغة البريد غير صحيحة: $email');
+        continue;
+      }
+      if (r['alias']?.toLowerCase() == AppConfig.bootstrapAdminUsername) {
+        res.error(row, 'اسم المستخدم "admin" محجوز لمدير النظام');
         continue;
       }
       final role = parseRole(r['role']);
