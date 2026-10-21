@@ -513,27 +513,47 @@ class LoginResult {
 
 // ======================== الدرجات ========================
 
-/// مكوّنات الدرجة بالترتيب.
-const gradeComponents = ['quiz', 'assignment', 'lab', 'attendance', 'midterm', 'final'];
+/// مكوّنات الدرجة بالترتيب (مطابقة لسجل درجات الجامعة student_grades_full).
+const gradeComponents = [
+  'attendance',
+  'assignment',
+  'project',
+  'lab',
+  'quiz',
+  'midterm',
+  'final'
+];
 
 const gradeComponentNames = {
-  'quiz': 'الاختبارات',
-  'assignment': 'الواجبات',
-  'lab': 'المختبر',
   'attendance': 'الحضور',
+  'assignment': 'الواجب البيتي',
+  'project': 'المشروع',
+  'lab': 'المختبر',
+  'quiz': 'الامتحان الأسبوعي',
   'midterm': 'الامتحان الفصلي',
   'final': 'الامتحان النهائي',
 };
 String componentName(String k) => gradeComponentNames[k] ?? k;
 
-/// الدرجات القصوى الافتراضية (40 سعي + 60 نهائي).
+const gradeComponentNamesEn = {
+  'attendance': 'Attendance',
+  'assignment': 'Homework',
+  'project': 'Project',
+  'lab': 'Lab',
+  'quiz': 'Weekly Quiz',
+  'midterm': 'Midterm',
+  'final': 'Final Exam (1st)',
+};
+
+/// الدرجات القصوى الافتراضية (50 سعي + 50 نهائي) كما في سجل الجامعة.
 const defaultMax = {
-  'quiz': 10.0,
-  'assignment': 5.0,
-  'lab': 10.0,
   'attendance': 5.0,
+  'assignment': 5.0,
+  'project': 10.0,
+  'lab': 10.0,
+  'quiz': 10.0,
   'midterm': 10.0,
-  'final': 60.0,
+  'final': 50.0,
 };
 
 /// توزيع درجات مادة + ما نُشر منها للطلبة.

@@ -211,21 +211,45 @@ class _GradesScreenState extends State<GradesScreen> {
   }
 
   Future<void> _import() async {
-    List<GradeRow>? rows;
+    GradeFile? file;
     try {
-      rows = await GradesExcel.pick();
+      file = await GradesExcel.pick();
     } catch (e) {
       if (mounted) showSnack(context, 'تعذّرت قراءة الملف', error: true);
       return;
     }
-    if (rows == null || !mounted) return;
+    if (file == null || !mounted) return;
+    final rows = file.rows;
     if (rows.isEmpty) {
       showSnack(context,
-          'لم أجد عمود "الرقم الجامعي" مع عمود درجات. استخدم القالب الجاهز.',
+          'لم أجد عمود "الرقم المعرفي" مع درجات مرصودة. استخدم سجل الدرجات الجاهز.',
           error: true);
       return;
     }
-    final sch = _scheme!;
+    // اعتماد الدرجات القصوى المكتوبة في عناوين الملف، مثل "المشروع (10)"
+    var sch = _scheme!;
+    final changed = file.headerMax.entries
+        .where((e) => (sch.max[e.key] ?? 0) != e.value)
+        .toList();
+    String? schemeNote;
+    if (changed.isNotEmpty) {
+      final max = Map<String, double>.from(sch.max);
+      for (final e in changed) {
+        max[e.key] = e.value;
+      }
+      // المكوّنات غير الموجودة في الملف تبقى كما هي
+      final n = GradeScheme(
+          courseId: widget.course.id, max: max, published: sch.published);
+      try {
+        await repo.saveScheme(n);
+        sch = n;
+        _scheme = n;
+        schemeNote = 'حُدِّث توزيع الدرجات حسب الملف: ' +
+            changed
+                .map((e) => '${componentName(e.key)} ${_fmt(e.value)}')
+                .join('، ');
+      } catch (_) {}
+    }
     final ids = {for (final s in _students) s.id};
     final errors = <String>[];
     var applied = 0;
@@ -263,8 +287,14 @@ class _GradesScreenState extends State<GradesScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('قُرئت درجات $applied طالباً. راجعها ثم اضغط حفظ.',
+              Text('قُرئت درجات $applied طالباً. راجعها ثم اضغط "حفظ الدرجات" لمزامنتها مع لوحات الطلبة.',
                   style: const TextStyle(fontWeight: FontWeight.w700)),
+              if (schemeNote != null) ...[
+                const SizedBox(height: 8),
+                Text(schemeNote!,
+                    style: const TextStyle(
+                        fontSize: 12.5, color: AppColors.royal)),
+              ],
               if (errors.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 ConstrainedBox(
@@ -368,8 +398,8 @@ class _GradesScreenState extends State<GradesScreen> {
                   _ => _autoAttendance(),
                 },
                 itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'imp', child: Text('رفع ملف Excel للدرجات')),
-                  PopupMenuItem(value: 'tpl', child: Text('تنزيل قالب الدرجات')),
+                  PopupMenuItem(value: 'imp', child: Text('رفع سجل الدرجات (Excel)')),
+                  PopupMenuItem(value: 'tpl', child: Text('تنزيل سجل الدرجات (Excel)')),
                   PopupMenuItem(value: 'att', child: Text('احتساب درجة الحضور تلقائياً')),
                   PopupMenuItem(value: 'publish', child: Text('نشر الدرجات للطلبة')),
                   PopupMenuItem(value: 'scheme', child: Text('توزيع الدرجات')),

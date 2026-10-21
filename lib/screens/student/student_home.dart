@@ -255,9 +255,119 @@ class _StudentHomeState extends State<StudentHome> {
         SectionTitle('الدرجات • ${termName(AppState.settings.currentTerm)}'),
         if (_grades.isEmpty)
           const EmptyState(icon: Icons.grading, text: 'لا توجد درجات منشورة بعد')
-        else
+        else ...[
+          _fullRecord(),
+          const SectionTitle('التفاصيل حسب المادة'),
           ..._grades.map(_gradeCard),
+        ],
       ],
+    );
+  }
+
+  /// سجل النتائج التفصيلي: صف لكل مادة وعمود لكل مكوّن (كسجل درجات الجامعة).
+  Widget _fullRecord() {
+    const head = TextStyle(
+        fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.night);
+    DataCell cell(String t, {Color? color, bool bold = false}) => DataCell(
+          Center(
+            child: Text(t,
+                style: TextStyle(
+                    fontSize: 12.5,
+                    color: color,
+                    fontWeight: bold ? FontWeight.w800 : FontWeight.w500)),
+          ),
+        );
+    return Container(
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: const BoxDecoration(
+              gradient: AppColors.mainGradient,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.table_chart_rounded, color: Colors.white),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text('سجل النتائج التفصيلي',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15)),
+                ),
+              ],
+            ),
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: DataTable(
+              headingRowHeight: 52,
+              dataRowMinHeight: 44,
+              dataRowMaxHeight: 52,
+              columnSpacing: 14,
+              horizontalMargin: 12,
+              headingRowColor:
+                  WidgetStateProperty.all(AppColors.royal.withOpacity(0.06)),
+              columns: [
+                const DataColumn(label: Text('المادة', style: head)),
+                ...gradeComponents.map((k) => DataColumn(
+                    label: Text(componentName(k).replaceFirst(' ', '\n'),
+                        textAlign: TextAlign.center, style: head))),
+                const DataColumn(
+                    label: Text('الدرجة\nالنهائية',
+                        textAlign: TextAlign.center, style: head)),
+                const DataColumn(label: Text('التقدير', style: head)),
+              ],
+              rows: _grades.map((g) {
+                final sch = g.scheme;
+                final pub =
+                    sch.active.where((k) => sch.published.contains(k)).toList();
+                final complete =
+                    pub.isNotEmpty && pub.length == sch.active.length;
+                final total = g.record?.totalOf(pub) ?? 0;
+                final letter = gradeLetter(total);
+                return DataRow(cells: [
+                  DataCell(SizedBox(
+                    width: 140,
+                    child: Text(g.course.nameAr,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  )),
+                  ...gradeComponents.map((k) {
+                    if ((sch.max[k] ?? 0) <= 0) return cell('—', color: AppColors.muted);
+                    if (!sch.published.contains(k)) {
+                      return cell('…', color: AppColors.muted);
+                    }
+                    final v = g.record?.marks[k];
+                    return cell(v == null ? '—' : _fmt(v));
+                  }),
+                  cell(pub.isEmpty ? '—' : _fmt(total), bold: true),
+                  cell(
+                      complete ? letter.label : (pub.isEmpty ? 'لم تُنشر' : 'جزئي'),
+                      color: complete
+                          ? (letter.pass ? AppColors.emerald : AppColors.rose)
+                          : AppColors.muted,
+                      bold: true),
+                ]);
+              }).toList(),
+            ),
+          ),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(14, 6, 14, 12),
+            child: Text(
+              '«…» درجة لم ينشرها التدريسي بعد • «—» لا يوجد هذا المكوّن في المادة أو لم تُرصد',
+              style: TextStyle(fontSize: 11, color: AppColors.muted),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

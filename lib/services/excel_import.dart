@@ -534,20 +534,28 @@ class ExcelImporter {
 // ======================== الدرجات ========================
 
 const _gradeHeaders = <String, List<String>>{
-  'id': ['الرقم الجامعي', 'الرقم المعرفي', 'رقم الطالب', 'id', 'student id'],
-  'quiz': ['الاختبارات', 'اختبارات', 'الاختبارات القصيره', 'quiz', 'quizzes'],
-  'assignment': ['الواجبات', 'واجبات', 'الواجب', 'assignment', 'assignments', 'homework'],
-  'lab': ['المختبر', 'مختبر', 'المختبرات', 'العملي', 'lab', 'labs'],
+  'id': ['الرقم المعرفي', 'الرقم الجامعي', 'رقم الطالب', 'id number', 'id', 'student id'],
   'attendance': ['الحضور', 'حضور', 'درجه الحضور', 'attendance'],
+  'assignment': ['الواجب البيتي', 'الواجبات', 'واجبات', 'الواجب', 'homework', 'assignment', 'assignments'],
+  'project': ['المشروع', 'مشروع', 'project'],
+  'lab': ['المختبر', 'مختبر', 'المختبرات', 'العملي', 'lab', 'labs'],
+  'quiz': ['الامتحان الاسبوعي', 'الاختبار الاسبوعي', 'الاختبارات', 'اختبارات', 'الاختبارات القصيره', 'weekly quiz', 'quiz', 'quizzes'],
   'midterm': ['الامتحان الفصلي', 'الفصلي', 'امتحان نصف السنه', 'نصف الفصل', 'midterm', 'mid'],
-  'final': ['الامتحان النهائي', 'النهائي', 'final'],
+  'final': ['الامتحان النهائي', 'النهائي', 'final exam', 'final'],
 };
 
 class GradeRow {
   final int row;
   final String studentId;
-  final Map<String, double?> marks; // null = خلية فارغة (لا تغيير)
+  final Map<String, double?> marks; // null = قيمة غير رقمية
   GradeRow(this.row, this.studentId, this.marks);
+}
+
+/// نتيجة قراءة ملف درجات: الصفوف + الدرجات القصوى المكتوبة في العناوين مثل "الحضور (5)".
+class GradeFile {
+  final List<GradeRow> rows;
+  final Map<String, double> headerMax;
+  GradeFile(this.rows, this.headerMax);
 }
 
 class GradesExcel {
@@ -558,28 +566,72 @@ class GradesExcel {
     return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
   }
 
-  /// قالب درجات مملوء مسبقاً بطلاب المادة ودرجاتهم الحالية.
+  static String _col(int i) => String.fromCharCode(65 + i); // A..Z
+
+  /// سجل درجات بشكل "student_grades_full": عنوان، عناوين عربية بالدرجة القصوى،
+  /// عناوين إنجليزية، صف لكل طالب مع معادلتي المجموع والتقدير، ثم المعدل والأعلى والأدنى.
   static Future<void> shareTemplate(Course c, List<Student> students,
       GradeScheme sch, Map<String, GradeRecord> existing) async {
     final x = Excel.createExcel();
     final sheet = x['Sheet1'];
     final comps = sch.active;
+    final first = 3; // العمود D
+    final last = first + comps.length - 1;
+    final totalCol = last + 1;
     sheet.appendRow([
-      TextCellValue('الرقم الجامعي'),
-      TextCellValue('اسم الطالب'),
-      ...comps.map((k) =>
-          TextCellValue('${componentName(k)} (من ${_fmt(sch.max[k])})')),
+      TextCellValue('سجل درجات الطلاب / Student Grades Record — ${c.nameAr} (${c.code})'),
     ]);
-    for (final s in students) {
+    sheet.appendRow([TextCellValue('')]);
+    sheet.appendRow([
+      TextCellValue('ت'),
+      TextCellValue('الرقم المعرفي'),
+      TextCellValue('اسم الطالب'),
+      ...comps.map((k) => TextCellValue('${componentName(k)}\n(${_fmt(sch.max[k])})')),
+      TextCellValue('الدرجة النهائية\n(${_fmt(sch.total)})'),
+      TextCellValue('التقدير\nGrade'),
+    ]);
+    sheet.appendRow([
+      TextCellValue('No.'),
+      TextCellValue('ID Number'),
+      TextCellValue('Student Name'),
+      ...comps.map((k) => TextCellValue(gradeComponentNamesEn[k] ?? k)),
+      TextCellValue('Final Grade'),
+      TextCellValue('Status / Grade'),
+    ]);
+    var r = 5;
+    for (var i = 0; i < students.length; i++, r++) {
+      final s = students[i];
       final g = existing[s.id];
+      final k = '${_col(totalCol)}$r';
       sheet.appendRow([
+        IntCellValue(i + 1),
         TextCellValue(s.id),
         TextCellValue(s.name),
-        ...comps.map((k) {
-          final v = g?.marks[k];
+        ...comps.map((c) {
+          final v = g?.marks[c];
           return v == null ? null : DoubleCellValue(v);
         }),
+        FormulaCellValue('SUM(${_col(first)}$r:${_col(last)}$r)'),
+        FormulaCellValue(
+            'IF($k="","",IF($k>=90,"امتياز / Excellent",IF($k>=80,"جيد جداً / Very Good",IF($k>=70,"جيد / Good",IF($k>=60,"متوسط / Medium",IF($k>=50,"مقبول / Pass","راسب / Fail"))))))'),
       ]);
+    }
+    final end = r - 1;
+    if (students.isNotEmpty) {
+      sheet.appendRow([TextCellValue('')]);
+      for (final (label, fn) in [
+        ('المعدل العام / Average', 'AVERAGE'),
+        ('أعلى درجة / Highest Score', 'MAX'),
+        ('أدنى درجة / Lowest Score', 'MIN'),
+      ]) {
+        sheet.appendRow([
+          TextCellValue(label),
+          null,
+          null,
+          for (var col = first; col <= totalCol; col++)
+            FormulaCellValue('IFERROR($fn(${_col(col)}5:${_col(col)}$end),"")'),
+        ]);
+      }
     }
     final bytes = x.encode();
     if (bytes == null) return;
@@ -587,12 +639,12 @@ class GradesExcel {
       XFile.fromData(Uint8List.fromList(bytes),
           mimeType:
               'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-          name: 'grades_${c.code}.xlsx')
-    ], subject: 'درجات ${c.nameAr}');
+          name: 'student_grades_${c.code}.xlsx')
+    ], subject: 'سجل درجات ${c.nameAr}');
   }
 
   /// يختار ملف الدرجات (من الهاتف أو Google Drive) ويقرأ صفوفه.
-  static Future<List<GradeRow>?> pick() async {
+  static Future<GradeFile?> pick() async {
     final r = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: const ['xlsx'],
@@ -602,19 +654,25 @@ class GradesExcel {
     if (bytes == null) return null;
     final x = Excel.decodeBytes(bytes);
     final out = <GradeRow>[];
+    final headerMax = <String, double>{};
     for (final sheet in x.tables.values) {
       final rows = sheet.rows;
       int headerAt = -1;
       Map<int, String> colField = {};
       for (var i = 0; i < rows.length && i < 15; i++) {
         final m = <int, String>{};
+        final mx = <String, double>{};
         for (var c = 0; c < rows[i].length; c++) {
-          final h = norm(ExcelImporter.cellText(rows[i][c]).split('(').first);
+          final raw = ExcelImporter.cellText(rows[i][c]);
+          final h = norm(raw.split('(').first.replaceAll('\n', ' '));
           if (h.isEmpty) continue;
           for (final e in _gradeHeaders.entries) {
             if (m.containsValue(e.key)) continue;
             if (e.value.any((syn) => norm(syn) == h)) {
               m[c] = e.key;
+              final mm = RegExp(r'\(([0-9.]+)\)').firstMatch(raw);
+              final v = mm == null ? null : double.tryParse(mm.group(1)!);
+              if (v != null && e.key != 'id') mx[e.key] = v;
               break;
             }
           }
@@ -622,6 +680,7 @@ class GradesExcel {
         if (m.containsValue('id') && m.length >= 2) {
           headerAt = i;
           colField = m;
+          headerMax.addAll(mx);
           break;
         }
       }
@@ -638,9 +697,11 @@ class GradesExcel {
             marks[f] = double.tryParse(v.replaceAll(',', '.'));
           }
         });
-        if (id != null && marks.isNotEmpty) out.add(GradeRow(i + 1, id!, marks));
+        // تجاهل صف العناوين الإنجليزية وصفوف المعدل/الأعلى/الأدنى
+        if (id == null || !RegExp(r'^[0-9]+$').hasMatch(id!)) continue;
+        if (marks.isNotEmpty) out.add(GradeRow(i + 1, id!, marks));
       }
     }
-    return out;
+    return GradeFile(out, headerMax);
   }
 }
