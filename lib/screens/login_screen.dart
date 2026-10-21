@@ -69,13 +69,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _signInPassword() async {
     final user = _user.text.trim();
-    if (user.isEmpty || _pw.text.isEmpty) {
+    if (user.isEmpty) {
       showSnack(
           context,
           _portal == Portal.student
-              ? 'أدخل الرقم المعرفي وكلمة المرور'
-              : 'أدخل اسم المستخدم وكلمة المرور',
+              ? 'خانة الرقم المعرفي فارغة'
+              : 'خانة اسم المستخدم فارغة',
           error: true);
+      return;
+    }
+    if (_pw.text.isEmpty) {
+      showSnack(context, 'خانة كلمة المرور فارغة', error: true);
       return;
     }
     if (_portal == Portal.student && !RegExp(r'^[0-9]+$').hasMatch(user)) {
@@ -176,6 +180,8 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 16),
           TextField(
             controller: _user,
+            autocorrect: false,
+            enableSuggestions: false,
             keyboardType: _portal == Portal.student
                 ? TextInputType.number
                 : TextInputType.text,
@@ -185,7 +191,6 @@ class _LoginScreenState extends State<LoginScreen> {
               labelText: _portal == Portal.student
                   ? 'الرقم المعرفي (الجامعي)'
                   : 'اسم المستخدم',
-              hintText: _portal == Portal.student ? '1989616052' : 'admin',
               prefixIcon: Icon(_portal == Portal.student
                   ? Icons.badge_outlined
                   : Icons.person_outline),
