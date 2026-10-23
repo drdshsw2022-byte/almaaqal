@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:nfc_manager/nfc_manager.dart';
 import 'package:nfc_manager/platform_tags.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -25,6 +26,7 @@ class NfcService {
   static const _hceKey = 'hce_payload';
 
   static Future<bool> isAvailable() async {
+    if (kIsWeb) return false; // المتصفح لا يدعم NFC
     try {
       return await NfcManager.instance.isAvailable();
     } catch (_) {
@@ -35,6 +37,7 @@ class NfcService {
   /// على هاتف الطالب: يحفظ رمز الهوية ليقدّمه الهاتف عند تقريبه من قارئ الدكتور.
   /// تقرؤه خدمة Android الأصلية (StudentHceService) من SharedPreferences.
   static Future<void> setStudentPayload(String? payload) async {
+    if (kIsWeb) return;
     final p = await SharedPreferences.getInstance();
     if (payload == null) {
       await p.remove(_hceKey);

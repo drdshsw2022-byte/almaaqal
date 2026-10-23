@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -69,12 +70,17 @@ class _BootScreenState extends State<BootScreen> {
     try {
       if (AppConfig.firebaseEnabled) {
         await Firebase.initializeApp(
-          options: const FirebaseOptions(
+          options: FirebaseOptions(
             apiKey: AppConfig.fbApiKey,
-            appId: AppConfig.fbAppId,
+            appId: AppConfig.fbPlatformAppId,
             messagingSenderId: AppConfig.fbSenderId,
             projectId: AppConfig.fbProjectId,
             storageBucket: AppConfig.fbStorageBucket,
+            authDomain: kIsWeb
+                ? (AppConfig.fbAuthDomain.isNotEmpty
+                    ? AppConfig.fbAuthDomain
+                    : '${AppConfig.fbProjectId}.firebaseapp.com')
+                : null,
           ),
         );
         AppState.repo = FirebaseRepo();

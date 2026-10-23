@@ -1,0 +1,19 @@
+{
+  "name": "جامعة المعقل الأهلية - النظام الجامعي",
+  "short_name": "جامعة المعقل",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#16183A",
+  "theme_color": "#16183A",
+  "description": "الحضور والغياب والدرجات والدروس - جامعة المعقل الأهلية في البصرة",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "prefer_related_applications": false,
+  "icons": [
+    {"src": "icons/Icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/Icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/Icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable"},
+    {"src": "icons/Icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
 /// إعدادات التطبيق العامة.
 ///
 /// إعدادات Firebase تُمرَّر وقت البناء عبر --dart-define (انظر README).
@@ -16,7 +18,7 @@ class AppConfig {
   // ---------------- الدخول بكلمة المرور ----------------
   /// حساب مدير النظام الأول (يُطلب تغيير كلمة مروره عند أول دخول).
   static const bootstrapAdminUsername = 'admin';
-  static const bootstrapAdminPassword = 'Almaaqal@2026';
+  static const bootstrapAdminPassword = '1224';
 
   /// كلمة المرور الأولية الافتراضية للكادر (إن لم يحدد المدير غيرها).
   static const defaultStaffPassword = 'Almaaqal@2026';
@@ -38,9 +40,17 @@ class AppConfig {
   static const fbProjectId = String.fromEnvironment('FB_PROJECT_ID');
   static const fbStorageBucket = String.fromEnvironment('FB_STORAGE_BUCKET');
   static const googleWebClientId = String.fromEnvironment('GOOGLE_WEB_CLIENT_ID');
+  /// لنسخة المتصفح (آيفون/ويندوز): معرّف تطبيق الويب ونطاق المصادقة في Firebase.
+  static const fbWebAppId = String.fromEnvironment('FB_WEB_APP_ID');
+  static const fbAuthDomain = String.fromEnvironment('FB_AUTH_DOMAIN');
+
+  /// معرّف تطبيق Firebase المناسب للمنصة الحالية.
+  static String get fbPlatformAppId => kIsWeb ? fbWebAppId : fbAppId;
 
   static bool get firebaseEnabled =>
-      fbApiKey.isNotEmpty && fbAppId.isNotEmpty && fbProjectId.isNotEmpty;
+      fbApiKey.isNotEmpty &&
+      fbPlatformAppId.isNotEmpty &&
+      fbProjectId.isNotEmpty;
 
   // ---------------- الوضع التجريبي ----------------
   static const demoAdminEmail = 'admin@$universityDomain';

@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:crypto/crypto.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -98,6 +101,11 @@ class FirebaseRepo implements Repo {
   }
 
   // ---------------- الدخول بكلمة المرور ----------------
+  /// كلمة مرور المصادقة الفعلية مشتقة من كلمة مرور المستخدم، فتقبل أي طول
+  /// (مثل 123) ولا تُخزَّن كلمة المرور الحقيقية في أي مكان.
+  static String _pw(String authEmail, String password) =>
+      'Mq#${sha256.convert(utf8.encode('${authEmail.toLowerCase()}::$password')).toString().substring(0, 40)}';
+
   static String _studentAuth(String id) => '$id@${AppConfig.studentAuthDomain}';
   static String _staffAuth(String uniEmail) =>
       '${uniEmail.split('@').first}@${AppConfig.staffAuthDomain}';
@@ -176,7 +184,8 @@ class FirebaseRepo implements Repo {
             : _staffAuth(r.staffEmail!));
     final uname = r.studentId ?? r.staffEmail!.split('@').first;
     try {
-      await _auth.signInWithEmailAndPassword(email: authEmail, password: password);
+      await _auth.signInWithEmailAndPassword(
+          email: authEmail, password: _pw(authEmail, password));
       final p = await _profileForAuthEmail(authEmail);
       if (p == null) {
         await _auth.signOut();
@@ -189,7 +198,8 @@ class FirebaseRepo implements Repo {
     }
     // أول دخول: إنشاء الحساب بكلمة المرور الأولية ثم التحقق منها
     try {
-      await _auth.createUserWithEmailAndPassword(email: authEmail, password: password);
+      await _auth.createUserWithEmailAndPassword(
+          email: authEmail, password: _pw(authEmail, password));
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
         throw AppException('كلمة المرور غير صحيحة');
@@ -247,8 +257,8 @@ class FirebaseRepo implements Repo {
     }
     try {
       await u.reauthenticateWithCredential(
-          EmailAuthProvider.credential(email: e, password: oldPassword));
-      await u.updatePassword(newPassword);
+          EmailAuthProvider.credential(email: e, password: _pw(e, oldPassword)));
+      await u.updatePassword(_pw(e, newPassword));
     } on FirebaseAuthException catch (x) {
       if (_isWrongCreds(x)) throw AppException('كلمة المرور الحالية غير صحيحة');
       if (x.code == 'weak-password') {
@@ -386,6 +396,9 @@ class FirebaseRepo implements Repo {
                     'role': x.role,
                     'alias': x.alias,
                     'initPw': x.initPw,
+                    if (x.deptId != null) 'deptId': x.deptId,
+                    if (x.collegeId != null) 'collegeId': x.collegeId,
+                    if (x.courseIds.isNotEmpty) 'courseIds': x.courseIds,
                   })
               .toList(),
           onProgress,

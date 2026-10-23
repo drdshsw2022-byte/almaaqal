@@ -27,7 +27,7 @@ class LocalRepo implements Repo {
   String? _currentEmail; // بريد أو "student:<id>"
   bool _usedInitial = false;
 
-  static const _key = 'almaqal_local_db_v6';
+  static const _key = 'almaqal_local_db_v7';
 
   @override
   bool get isDemo => true;

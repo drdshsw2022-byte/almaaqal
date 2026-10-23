@@ -5,9 +5,13 @@
   "name": "د. احمد خطيب",
   "role": "doctor",
   "alias": "doc01",
-  "initPw": "4bc42f96b8617819020b0e763d9f0ada87a0f968e904b82632e35180dc76d4f8",
-  "courseIds": [],
-  "activated": false
+  "initPw": "f9bc47c18acb0ff426a655608d8d5ac8670c0ff4f6a366cffa97b74f240cb607",
+  "courseIds": [
+   "cyber|5|CYSE500"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "haider.1971@gmail.com",
@@ -15,9 +19,14 @@
   "name": "د. احمد الشافعي",
   "role": "doctor",
   "alias": "doc02",
-  "initPw": "06ae273aedd86a87099161095c3d1e5e6eae35b95e55b542cb027fbeb574f69a",
-  "courseIds": [],
-  "activated": false
+  "initPw": "64faaf850c62fd7ee954bb6bb747b407dc34329adf6933e7df9fd636f8ce38af",
+  "courseIds": [
+   "cyber|5|CYSE501",
+   "cyber|5|CYSE503"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "shatt.alarb@gmail.com",
@@ -25,9 +34,13 @@
   "name": "د. نبيل شواي",
   "role": "doctor",
   "alias": "doc03",
-  "initPw": "ce91394850c29fe75c859e6c39cf0a80e87d7f86022c820fdc06289729bf66bd",
-  "courseIds": [],
-  "activated": false
+  "initPw": "f7619a9fd8620111c53a926c8d4919808149e736a8243d045fdca78c0942cd6c",
+  "courseIds": [
+   "cyber|5|UREQ500"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "fifo65556@gmail.com",
@@ -35,9 +48,14 @@
   "name": "د. احمد دنقل",
   "role": "doctor",
   "alias": "doc04",
-  "initPw": "d89da6bef9aa85809e53301ccb9e0c56b452e95a9a285bb1dfa2f6e1bd783c58",
-  "courseIds": [],
-  "activated": false
+  "initPw": "e1cf520896f1b4dc09328e8df60956717290a7998c2036b498df35134f21184d",
+  "courseIds": [
+   "cyber|5|CYSE502",
+   "cyber|5|CYSE505"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "gitcs.21@gmail.com",
@@ -45,9 +63,13 @@
   "name": "د. عماد بدر الدين",
   "role": "doctor",
   "alias": "doc05",
-  "initPw": "7e0489033ebe8c1c3c91aa9887aa80d7236fbcf1337f71ef23e615b6fb920349",
-  "courseIds": [],
-  "activated": false
+  "initPw": "379bbba6de0fc4f14a122ebe1580e92305dfdd162dd3c58210afac77bfdd8f1b",
+  "courseIds": [
+   "cyber|5|CYSE502"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "t.c.basra.iq@gmail.com",
@@ -55,9 +77,13 @@
   "name": "د. علاء ربيع",
   "role": "doctor",
   "alias": "doc06",
-  "initPw": "5ac91cf124d68f47152a261db7dfadb0fcbc0ccbbd204a7747dd71f467fb8245",
-  "courseIds": [],
-  "activated": false
+  "initPw": "ff2921d92894d6b94a1fcbf06f3dbb100070176af5364c2fcbc79ebb5045e328",
+  "courseIds": [
+   "cyber|5|CYSE504"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  },
  {
   "id": "hid.you82@gmail.com",
@@ -65,8 +91,13 @@
   "name": "د. ايمن محمود",
   "role": "doctor",
   "alias": "doc07",
-  "initPw": "763a9bf47fffcfa891e2d0f9c10e3f369e44093486493651fe31d229556e522a",
-  "courseIds": [],
-  "activated": false
+  "initPw": "0d14a902b7b3ff3b327674eb2032f533e06038178a4f294426a69cb99fa9d091",
+  "courseIds": [
+   "cyber|5|CYSE500",
+   "cyber|5|CYSE503"
+  ],
+  "activated": false,
+  "deptId": "cyber",
+  "collegeId": "eng"
  }
 ]

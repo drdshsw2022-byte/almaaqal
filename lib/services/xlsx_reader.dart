@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
+import 'package:cross_file/cross_file.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:xml/xml.dart';
 
@@ -172,7 +172,7 @@ class XlsxReader {
     final f = r.files.single;
     var bytes = f.bytes;
     if ((bytes == null || bytes.isEmpty) && f.path != null) {
-      bytes = await File(f.path!).readAsBytes();
+      bytes = await XFile(f.path!).readAsBytes();
     }
     if (bytes == null || bytes.isEmpty) {
       throw AppException(

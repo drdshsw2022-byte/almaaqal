@@ -551,11 +551,24 @@ class GradeRow {
   GradeRow(this.row, this.studentId, this.marks);
 }
 
-/// نتيجة قراءة ملف درجات: الصفوف + الدرجات القصوى المكتوبة في العناوين مثل "الحضور (5)".
-class GradeFile {
+/// ورقة سجل درجات واحدة: الصفوف + الدرجات القصوى المكتوبة في العناوين مثل "الحضور (5)".
+class GradeSheet {
+  final String name;
+  final String title; // نص الصفوف التي تسبق العناوين (اسم المادة، القسم، المرحلة...)
   final List<GradeRow> rows;
   final Map<String, double> headerMax;
-  GradeFile(this.rows, this.headerMax);
+  GradeSheet(this.name, this.title, this.rows, this.headerMax);
+}
+
+/// نتيجة قراءة ملف درجات (ورقة أو أكثر).
+class GradeFile {
+  final List<GradeSheet> sheets;
+  GradeFile(this.sheets);
+
+  /// صفوف الورقة الأولى (لملف مادة واحدة).
+  List<GradeRow> get rows => sheets.isEmpty ? const [] : sheets.first.rows;
+  Map<String, double> get headerMax =>
+      sheets.isEmpty ? const {} : sheets.first.headerMax;
 }
 
 class GradesExcel {
@@ -647,13 +660,18 @@ class GradesExcel {
   static Future<GradeFile?> pick() async {
     final sheets = await XlsxReader.pick();
     if (sheets == null) return null;
-    final out = <GradeRow>[];
-    final headerMax = <String, double>{};
+    return parseSheets(sheets);
+  }
+
+  /// يقرأ كل ورقة تحتوي سجل درجات (ورقة لكل مادة في ملفات النتائج الشاملة).
+  static GradeFile parseSheets(List<XlsxSheet> sheets) {
+    final out = <GradeSheet>[];
     for (final sheet in sheets) {
       final rows = sheet.rows;
       int headerAt = -1;
       Map<int, String> colField = {};
-      for (var i = 0; i < rows.length && i < 15; i++) {
+      final headerMax = <String, double>{};
+      for (var i = 0; i < rows.length && i < 20; i++) {
         final m = <int, String>{};
         final mx = <String, double>{};
         for (var c = 0; c < rows[i].length; c++) {
@@ -679,6 +697,11 @@ class GradesExcel {
         }
       }
       if (headerAt < 0) continue;
+      final title = [
+        for (var i = 0; i < headerAt; i++)
+          ...rows[i].where((x) => x.trim().isNotEmpty)
+      ].join(' | ');
+      final grs = <GradeRow>[];
       for (var i = headerAt + 1; i < rows.length; i++) {
         String? id;
         final marks = <String, double?>{};
@@ -693,9 +716,70 @@ class GradesExcel {
         });
         // تجاهل صف العناوين الإنجليزية وصفوف المعدل/الأعلى/الأدنى
         if (id == null || !RegExp(r'^[0-9]+$').hasMatch(id!)) continue;
-        if (marks.isNotEmpty) out.add(GradeRow(i + 1, id!, marks));
+        if (marks.isNotEmpty) grs.add(GradeRow(i + 1, id!, marks));
+      }
+      if (grs.isNotEmpty) out.add(GradeSheet(sheet.name, title, grs, headerMax));
+    }
+    return GradeFile(out);
+  }
+
+  /// درجة تطابق ورقة نتائج مع مادة (اسم الورقة، عنوانها، الاسم الإنجليزي، القسم والمرحلة).
+  static int matchScore(GradeSheet sh, Course c, {String? deptName}) {
+    final text = norm('${sh.name} ${sh.title}');
+    var score = 0;
+    final ar = norm(c.nameAr);
+    if (norm(sh.name) == ar) {
+      score += 100;
+    } else if (text.contains(ar)) {
+      score += 90;
+    } else {
+      final tok = (String x) => norm(x)
+          .split(RegExp(r'[^\u0600-\u06FFa-z0-9]+'))
+          .map((w) => w.startsWith('ال') && w.length > 3 ? w.substring(2) : w)
+          .where((w) => w.length > 2 && !const {'في', 'من', 'على'}.contains(w))
+          .toSet();
+      final a = tok(c.nameAr);
+      final b = tok(sh.name);
+      if (a.isNotEmpty && b.isNotEmpty) {
+        var common = 0;
+        for (final w in a) {
+          if (b.any((x) => x == w || x.startsWith(w) || w.startsWith(x))) common++;
+        }
+        score += (60 * common / (a.length > b.length ? a.length : b.length)).round();
       }
     }
-    return GradeFile(out, headerMax);
+    final en = c.nameEn.trim().toLowerCase();
+    if (en.isNotEmpty) {
+      for (final m in RegExp(r'\(([A-Za-z][^)]*)\)').allMatches('${sh.name} ${sh.title}')) {
+        final t = m.group(1)!.trim().toLowerCase();
+        if (t == en) {
+          score += 100;
+        } else if (en.contains(t) || t.contains(en)) {
+          score += 60;
+        }
+      }
+    }
+    if (deptName != null) {
+      final d = norm(deptName).replaceAll('هندسه ', '');
+      if (d.isNotEmpty && text.contains(d)) score += 30;
+    }
+    final st = ExcelImporter.parseStage(RegExp(r'المرحل[ةه] [^ |)]+').firstMatch(sh.title)?.group(0));
+    if (st != null && st == c.stage) score += 20;
+    return score;
+  }
+
+  /// أفضل مادة لورقة (أو null إن لم يكن التطابق كافياً).
+  static Course? bestCourse(GradeSheet sh, List<Course> courses,
+      Map<String, String> deptNames) {
+    Course? best;
+    var bs = 0;
+    for (final c in courses) {
+      final sc = matchScore(sh, c, deptName: deptNames[c.deptId]);
+      if (sc > bs) {
+        bs = sc;
+        best = c;
+      }
+    }
+    return bs >= 60 ? best : null;
   }
 }

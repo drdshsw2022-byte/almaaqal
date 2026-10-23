@@ -42,11 +42,13 @@
 
 | الحساب | اسم المستخدم | كلمة المرور الأولية |
 |---|---|---|
-| **مدير النظام** | `admin` | `Almaaqal@2026` |
+| **مدير النظام** | `admin` | `1224` |
+| **التدريسيون (ملف doctor.xlsx)** | `doc01` … `doc07` | `123` |
 | **التدريسي والعميد ورئيس القسم والرئاسة** | الجزء قبل @ من بريده الجامعي (مثلاً `ahmed.ali`) | ما يحدده المدير عند الإضافة، وإلا `Almaaqal@2026` |
 | **الطالب** | الرقم المعرفي (مثلاً `1989616052`) | الرقم المعرفي نفسه، أو ما يحدده المدير في ملف Excel (عمود «كلمة المرور») |
 
 - **أول دخول:** عند الدخول بكلمة المرور الأولية يُطلب من المستخدم تعيين كلمة مرور خاصة به (8 أحرف فأكثر) قبل استخدام التطبيق.
+- كلمات المرور القصيرة (مثل `123`) مقبولة كأولية، لأن التطبيق يشتق منها كلمة مرور مصادقة داخلية قوية.
 - **إعادة التعيين:** يجريها المدير من قائمة الطالب أو التدريسي ← «إعادة تعيين كلمة المرور». في Firebase يلزم أيضاً حذف المستخدم من **Authentication**، والاسم المطلوب حذفه يظهر في نافذة إعادة التعيين.
 - **حسابات بدون خادم:** إذا لم يُربط التطبيق بـ Firebase تُضاف هذه الحسابات للتجربة على الجهاز:
   - `admin`
@@ -111,32 +113,65 @@
 - التدريسي: `doctor@almaaqal.edu.iq`
 - الطالب: `<الرقم المعرفي>@almaaqal.edu.iq`
 
-## تفعيل الوضع الحقيقي (Firebase)
+## التشغيل أونلاين على كل الأجهزة (Firebase + نسخة الويب)
 
-1. أنشئ مشروعاً في console.firebase.google.com.
-2. من **Authentication ← Sign-in method** فعّل **Email/Password** و **Google**.
-3. أنشئ **Firestore Database**، ثم الصق محتوى `firestore.rules` في تبويب Rules واضغط Publish.
-4. أضف تطبيق Android:
-   - Package: `iq.edu.almaqal.almaqal_attendance`
-   - SHA-1: `6C:1D:65:0B:4E:54:8E:EA:1C:B9:45:69:85:8A:61:9A:AB:FE:03:65`
-   - SHA-256: `EA:67:58:09:D7:76:94:40:C1:42:D4:0F:72:E6:AD:FB:D2:47:C7:65:D4:8E:38:21:1A:A0:D3:2F:B9:C3:B1:E3`
-5. من `google-services.json` أضف هذه القيم كأسرار في المستودع (**Settings ← Secrets and variables ← Actions**):
+بعد هذه الخطوات تصبح البيانات على خادم واحد: ما يرفعه المدير أو الدكتور يظهر فوراً لكل الطلبة على أي جهاز.
 
-| السر | من أين |
+| الجهاز | طريقة الاستخدام |
 |---|---|
-| `FB_API_KEY` | `client[0].api_key[0].current_key` |
-| `FB_APP_ID` | `client[0].client_info.mobilesdk_app_id` |
-| `FB_SENDER_ID` | `project_info.project_number` |
-| `FB_PROJECT_ID` | `project_info.project_id` |
-| `FB_STORAGE_BUCKET` | `project_info.storage_bucket` |
-| `GOOGLE_WEB_CLIENT_ID` | قيمة `client_id` للعنصر الذي فيه `"client_type": 3` |
+| أندرويد | ملف APK من صفحة Releases |
+| آيفون / آيباد | رابط الويب في Safari ← مشاركة ← «إضافة إلى الشاشة الرئيسية» |
+| ويندوز / ماك | رابط الويب في Chrome أو Edge ← أيقونة «تثبيت التطبيق» في شريط العنوان |
 
-6. أعد البناء من **Actions ← Run workflow**.
-7. أول دخول: من تبويب «الإدارة» سجّل الدخول بـ `admin` / `Almaaqal@2026` وغيّر كلمة المرور. بعدها:
-   - افتح **الإعدادات ← تشغيل التهيئة**.
-   - ارفع ملفات Excel للطلاب والكادر.
+ملاحظة: NFC يعمل على أندرويد فقط؛ على آيفون وويندوز يُسجَّل الحضور بمسح QR بالكاميرا أو بكتابة الرقم المعرفي.
 
-> إذا كانت حسابات الجامعة على Google Workspace، قد يحتاج مسؤول Workspace إلى السماح للتطبيق. يتم ذلك من Admin console ← Security ← API controls ← App access control.
+### 1) مشروع Firebase (مجاني)
+1. ادخل console.firebase.google.com ← **Add project** ← اسم مثل `almaqal-uni` (يمكن تعطيل Google Analytics).
+2. **Build ← Authentication ← Get started ← Sign-in method** ← فعّل **Email/Password**.
+3. **Build ← Firestore Database ← Create database** ← اختر موقعاً (مثل `eur3`) ← Production mode.
+4. تبويب **Rules** في Firestore: احذف الموجود والصق محتوى ملف `firestore.rules` ثم **Publish**.
+
+### 2) تطبيق أندرويد في Firebase
+**Project settings ← Your apps ← Android**:
+- Package: `iq.edu.almaqal.almaqal_attendance`
+- SHA-1: `6C:1D:65:0B:4E:54:8E:EA:1C:B9:45:69:85:8A:61:9A:AB:FE:03:65`
+
+نزّل `google-services.json` (لا ترفعه للمستودع) وخذ منه القيم بالجدول أدناه.
+
+### 3) تطبيق ويب في Firebase
+**Project settings ← Your apps ← Add app ← Web (</>)** ← أي اسم ← Register. يظهر كود فيه `firebaseConfig`؛ خذ منه `appId` و `authDomain`.
+
+### 4) الأسرار في GitHub
+المستودع ← **Settings ← Secrets and variables ← Actions ← New repository secret**:
+
+| السر | القيمة |
+|---|---|
+| `FB_API_KEY` | `apiKey` (أو `client[0].api_key[0].current_key`) |
+| `FB_APP_ID` | `client[0].client_info.mobilesdk_app_id` من google-services.json (يبدأ بـ `1:` وفيه `:android:`) |
+| `FB_WEB_APP_ID` | `appId` من كود الويب (فيه `:web:`) |
+| `FB_SENDER_ID` | `messagingSenderId` / `project_number` |
+| `FB_PROJECT_ID` | `projectId` |
+| `FB_STORAGE_BUCKET` | `storageBucket` |
+| `FB_AUTH_DOMAIN` | `authDomain` (مثل `almaqal-uni.firebaseapp.com`) |
+
+### 5) تفعيل رابط الويب
+المستودع ← **Settings ← Pages ← Build and deployment ← Source: GitHub Actions**.
+ثم **Actions ← Run workflow**. بعد انتهاء البناء:
+- APK في **Releases** (اسمه ينتهي بـ `firebase.apk`).
+- رابط الويب: `https://<اسم-حسابك>.github.io/<اسم-المستودع>/`
+
+### 6) أول تشغيل
+1. من تبويب «الإدارة» ادخل بـ `admin` / `1224` وغيّر كلمة المرور.
+2. اضغط بطاقة «قاعدة البيانات فارغة» (أو **الإعدادات ← تشغيل التهيئة**) لرفع الكليات والمواد والطلاب والتدريسيين.
+3. **نتائج الطلبة** ← اختر ملف النتائج الشامل (مثل `CS-L3 Grades.xlsx`): يطابق التطبيق كل ورقة بمادتها ← «مزامنة».
+4. وزّع أسماء المستخدمين على التدريسيين والطلبة.
+
+## إدارة البيانات من التطبيق (مدير النظام)
+- **رفع Excel:** الطلاب، الكادر، المواد، الكليات والأقسام (إضافة وتحديث).
+- **نتائج الطلبة:** ملف مادة واحدة أو ملف شامل بورقة لكل مادة.
+- **الطلاب:** إضافة، تعديل، حذف، نقل لقسم، ربط بطاقات NFC، إعادة تعيين كلمة المرور.
+- **الكادر:** إضافة تدريسي أو رئيس قسم أو عميد أو رئاسة، وتحديد كليته وقسمه وموادّه.
+- **الكليات والأقسام:** استحداث كلية جديدة وأقسامها، ثم موادها وكادرها.
 
 ## ملاحظات
 

@@ -7,6 +7,7 @@ import '../../widgets/common.dart';
 import '../common/profile_sheet.dart';
 import '../common/reports_screen.dart';
 import '../doctor/doctor_home.dart';
+import '../doctor/results_upload_screen.dart';
 import 'courses_screen.dart';
 import 'dashboard_screen.dart';
 import 'import_screen.dart';
@@ -211,6 +212,13 @@ class _AdminHomeState extends State<AdminHome> {
                           icon: Icons.upload_file_rounded,
                           gradient: p[3],
                           onTap: () => _open(const ImportScreen())),
+                      ActionTile(
+                          title: 'نتائج الطلبة',
+                          subtitle: 'رفع ومزامنة',
+                          icon: Icons.grading_rounded,
+                          gradient: p[4],
+                          onTap: () => _open(
+                              ResultsUploadScreen(myCourses: <Course>[]))),
                       if (top)
                         ActionTile(
                             title: 'الكليات',

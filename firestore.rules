@@ -14,8 +14,8 @@ service cloud.firestore {
     function signedIn() { return request.auth != null && request.auth.token.email != null; }
     function authEmail() { return request.auth.token.email.lower(); }
     function localPart() { return authEmail().split('@')[0]; }
-    function isStaffPw() { return authEmail().matches('.*@pw[.]almaqal[.]app'); }
-    function isStudentPw() { return authEmail().matches('.*@st[.]almaqal[.]app'); }
+    function isStaffPw() { return authEmail().matches('.*@pw[.]almaaqal[.]app'); }
+    function isStudentPw() { return authEmail().matches('.*@st[.]almaaqal[.]app'); }
 
     // بريد الكادر لحساب كلمة مرور داخلي: من فهرس usernames (مثل doc01) أو بريد الجامعة
     function staffEmailFor(name) {

@@ -219,7 +219,20 @@ class _GradesScreenState extends State<GradesScreen> {
       return;
     }
     if (file == null || !mounted) return;
-    final rows = file.rows;
+    // ملف شامل بورقة لكل مادة: نختار ورقة هذه المادة
+    GradeSheet? sheet = file.sheets.isEmpty ? null : file.sheets.first;
+    if (file.sheets.length > 1) {
+      var best = -1;
+      for (final sh in file.sheets) {
+        final sc = GradesExcel.matchScore(sh, widget.course);
+        if (sc > best) {
+          best = sc;
+          sheet = sh;
+        }
+      }
+    }
+    final rows = sheet?.rows ?? const <GradeRow>[];
+    final headerMax = sheet?.headerMax ?? const <String, double>{};
     if (rows.isEmpty) {
       showSnack(context,
           'لم أجد عمود "الرقم المعرفي" مع درجات مرصودة. استخدم سجل الدرجات الجاهز.',
@@ -228,7 +241,7 @@ class _GradesScreenState extends State<GradesScreen> {
     }
     // اعتماد الدرجات القصوى المكتوبة في عناوين الملف، مثل "المشروع (10)"
     var sch = _scheme!;
-    final changed = file.headerMax.entries
+    final changed = headerMax.entries
         .where((e) => (sch.max[e.key] ?? 0) != e.value)
         .toList();
     String? schemeNote;

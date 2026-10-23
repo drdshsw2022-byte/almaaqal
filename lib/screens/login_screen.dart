@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../app_state.dart';
@@ -214,7 +215,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 18),
           _loginButton(),
-          if (!repo.isDemo) ...[
+          if (!repo.isDemo && !kIsWeb) ...[
             const SizedBox(height: 14),
             Row(
               children: [
