@@ -1,4 +1,4 @@
-name: بناء ملف APK
+name: بناء التطبيق (أندرويد + نسخة الويب لآيفون وويندوز)
 
 on:
   push:
@@ -7,6 +7,12 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -103,3 +109,52 @@ jobs:
           name: نسخة رقم ${{ github.run_number }}
           body: ملف APK لتطبيق الحضور والغياب - جامعة المعقل الأهلية.
           files: dist/*.apk
+
+  # ---------------- نسخة الويب: تعمل على آيفون وويندوز وأي متصفح ----------------
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.5'
+          channel: stable
+          cache: true
+
+      - name: تنزيل الحزم
+        run: flutter pub get
+
+      - name: بناء نسخة الويب
+        env:
+          FB_API_KEY: ${{ secrets.FB_API_KEY }}
+          FB_WEB_APP_ID: ${{ secrets.FB_WEB_APP_ID }}
+          FB_SENDER_ID: ${{ secrets.FB_SENDER_ID }}
+          FB_PROJECT_ID: ${{ secrets.FB_PROJECT_ID }}
+          FB_STORAGE_BUCKET: ${{ secrets.FB_STORAGE_BUCKET }}
+          FB_AUTH_DOMAIN: ${{ secrets.FB_AUTH_DOMAIN }}
+        run: |
+          REPO="${{ github.event.repository.name }}"
+          if [[ "$REPO" == *.github.io ]]; then BASE="/"; else BASE="/$REPO/"; fi
+          flutter build web --release --base-href "$BASE" \
+            --dart-define=FB_API_KEY="$FB_API_KEY" \
+            --dart-define=FB_WEB_APP_ID="$FB_WEB_APP_ID" \
+            --dart-define=FB_SENDER_ID="$FB_SENDER_ID" \
+            --dart-define=FB_PROJECT_ID="$FB_PROJECT_ID" \
+            --dart-define=FB_STORAGE_BUCKET="$FB_STORAGE_BUCKET" \
+            --dart-define=FB_AUTH_DOMAIN="$FB_AUTH_DOMAIN"
+          # يمنع GitHub Pages من تجاهل الملفات التي تبدأ بشرطة سفلية
+          touch build/web/.nojekyll
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
