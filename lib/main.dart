@@ -43,14 +43,8 @@ class AlmaqalApp extends StatelessWidget {
         GlobalCupertinoLocalizations.delegate,
       ],
       // على الحاسوب: محتوى في الوسط بعرض مريح كما في البوابة
-      builder: (context, child) => ConstellationBackground(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1600),
-            child: child,
-          ),
-        ),
-      ),
+      builder: (context, child) =>
+          ConstellationBackground(child: child ?? const SizedBox()),
       home: const BootScreen(),
     );
   }
