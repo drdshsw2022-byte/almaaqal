@@ -223,13 +223,13 @@ class _CourseBrowserState extends State<CourseBrowser> {
     if (stages.isEmpty) {
       return const EmptyState(icon: Icons.stairs, text: 'لا توجد مواد لهذا القسم');
     }
-    return GridView.count(
+    return GridView(
       key: ValueKey('stages-$_dept'),
       padding: const EdgeInsets.all(16),
-      crossAxisCount: 2,
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1.25,
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 300, mainAxisExtent: 150,
+                      mainAxisSpacing: 12, crossAxisSpacing: 12),
+      
       children: stages.map((st) {
         final sc = cs.where((c) => c.stage == st);
         return Material(

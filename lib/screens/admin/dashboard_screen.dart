@@ -157,13 +157,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  GridView.count(
-                    crossAxisCount: 2,
+                  GridView(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 280, mainAxisExtent: 80,
+                      mainAxisSpacing: 10, crossAxisSpacing: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    childAspectRatio: 2.1,
+                    
                     children: [
                       StatCard(
                           label: 'الطلبة المسجلون',

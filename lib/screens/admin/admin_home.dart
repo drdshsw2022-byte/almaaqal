@@ -163,13 +163,13 @@ class _AdminHomeState extends State<AdminHome> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (!_loading && !_seeded && top) _seedCard(),
-                  GridView.count(
-                    crossAxisCount: 2,
+                  GridView(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 280, mainAxisExtent: 80,
+                      mainAxisSpacing: 12, crossAxisSpacing: 12),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 2.1,
+                    
                     children: [
                       StatCard(
                           label: 'الطلاب',
@@ -194,13 +194,13 @@ class _AdminHomeState extends State<AdminHome> {
                     ],
                   ),
                   const SectionTitle('الإدارة'),
-                  GridView.count(
-                    crossAxisCount: 3,
+                  GridView(
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 130, mainAxisExtent: 150,
+                      mainAxisSpacing: 12, crossAxisSpacing: 12),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.92,
+                    
                     children: [
                       ActionTile(
                           title: 'المؤشرات',
