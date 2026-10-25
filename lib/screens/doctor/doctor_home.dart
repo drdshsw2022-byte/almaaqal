@@ -197,7 +197,9 @@ class _DoctorHomeState extends State<DoctorHome> {
     final p = AppColors.tilePalette;
     final shown = _shownCourses;
 
-    return Scaffold(
+    return ConstellationBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _manageCourses,
         icon: const Icon(Icons.library_add),
@@ -290,7 +292,7 @@ class _DoctorHomeState extends State<DoctorHome> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Future<void> _openResults([Course? c]) async {
@@ -438,7 +440,7 @@ class _DoctorHomeState extends State<DoctorHome> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(

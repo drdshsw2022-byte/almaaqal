@@ -127,7 +127,9 @@ class _AdminHomeState extends State<AdminHome> {
     final top = role == Role.admin || role == Role.president;
     final teaches = (role == Role.head || role == Role.dean) &&
         user.staff!.courseIds.isNotEmpty;
-    return Scaffold(
+    return ConstellationBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
@@ -287,7 +289,7 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _seedCard() {
@@ -332,7 +334,7 @@ class _SessionTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(18)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(18)),
       child: Row(
         children: [
           Container(

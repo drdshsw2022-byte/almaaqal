@@ -17,7 +17,7 @@ class FilterBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      color: AppColors.card,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
       child: Column(
         children: [
@@ -74,8 +74,8 @@ class ChoiceMenuChip<T> extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          gradient: selected ? AppColors.mainGradient : null,
-          color: selected ? null : const Color(0xFFF1F2F9),
+          gradient: selected ? AppColors.amberGradient : null,
+          color: selected ? null : AppColors.surface2,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(

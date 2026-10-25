@@ -198,7 +198,7 @@ class _StructureScreenState extends State<StructureScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(22)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(22)),
       child: Column(
         children: [
           Container(

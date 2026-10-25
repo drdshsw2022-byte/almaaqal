@@ -461,7 +461,7 @@ class _GradesScreenState extends State<GradesScreen> {
       children: [
         Container(
           width: double.infinity,
-          color: Colors.white,
+          color: AppColors.card,
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           child: Row(
             children: [

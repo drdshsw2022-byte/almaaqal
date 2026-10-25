@@ -146,7 +146,7 @@ class ImportScreen extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.card,
                   borderRadius: BorderRadius.circular(22)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

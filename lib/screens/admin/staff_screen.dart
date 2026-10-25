@@ -317,7 +317,7 @@ class _StaffScreenState extends State<StaffScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(20)),
       child: ListTile(
         contentPadding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
         onTap: () => _edit(s),

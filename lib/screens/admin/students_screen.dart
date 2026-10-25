@@ -339,7 +339,7 @@ class _StudentsScreenState extends State<StudentsScreen> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(18),
         child: ListTile(
           shape:

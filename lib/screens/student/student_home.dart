@@ -103,7 +103,9 @@ class _StudentHomeState extends State<StudentHome> {
   Widget build(BuildContext context) {
     final me = _me;
     final pages = [_homeTab(me), _absenceTab(me), _gradesTab(), _lessonsTab()];
-    return Scaffold(
+    return ConstellationBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
@@ -159,7 +161,7 @@ class _StudentHomeState extends State<StudentHome> {
               label: 'الدروس'),
         ],
       ),
-    );
+    ));
   }
 
   // ---------------- الرئيسية ----------------
@@ -282,7 +284,7 @@ class _StudentHomeState extends State<StudentHome> {
   /// سجل النتائج التفصيلي: صف لكل مادة وعمود لكل مكوّن (كسجل درجات الجامعة).
   Widget _fullRecord() {
     const head = TextStyle(
-        fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.night);
+        fontWeight: FontWeight.w800, fontSize: 12, color: AppColors.gold);
     DataCell cell(String t, {Color? color, bool bold = false}) => DataCell(
           Center(
             child: Text(t,
@@ -294,7 +296,7 @@ class _StudentHomeState extends State<StudentHome> {
         );
     return Container(
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -396,7 +398,7 @@ class _StudentHomeState extends State<StudentHome> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(22)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(22)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

@@ -128,7 +128,7 @@ class _CourseBrowserState extends State<CourseBrowser> {
     }
     return Container(
       width: double.infinity,
-      color: Colors.white,
+      color: AppColors.card,
       padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
@@ -168,7 +168,7 @@ class _CourseBrowserState extends State<CourseBrowser> {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Material(
-                color: Colors.white,
+                color: AppColors.card,
                 borderRadius: BorderRadius.circular(22),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(22),
@@ -233,7 +233,7 @@ class _CourseBrowserState extends State<CourseBrowser> {
       children: stages.map((st) {
         final sc = cs.where((c) => c.stage == st);
         return Material(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(22),
           child: InkWell(
             borderRadius: BorderRadius.circular(22),

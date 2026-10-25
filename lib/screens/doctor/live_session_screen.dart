@@ -449,7 +449,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
       return Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.card,
           borderRadius: BorderRadius.circular(24),
         ),
         child: Column(
@@ -649,7 +649,7 @@ class _LiveSessionScreenState extends State<LiveSessionScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(16)),
+            color: AppColors.card, borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             Icon(icon, color: color),

@@ -131,19 +131,15 @@ class _BootScreenState extends State<BootScreen> {
       );
     }
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+      body: ConstellationBackground(
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const AppLogo(size: 120),
               const SizedBox(height: 24),
-              const Text(AppConfig.universityName,
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800)),
+              const GoldText(AppConfig.universityName,
+                  style: TextStyle(fontSize: 26, fontWeight: FontWeight.w900)),
               const SizedBox(height: 4),
               Text('${AppConfig.city} • ${AppConfig.appName}',
                   style: TextStyle(

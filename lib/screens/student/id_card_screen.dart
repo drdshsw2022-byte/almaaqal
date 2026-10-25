@@ -75,7 +75,7 @@ class _IdCardScreenState extends State<IdCardScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-              color: Colors.white, borderRadius: BorderRadius.circular(16)),
+              color: AppColors.card, borderRadius: BorderRadius.circular(16)),
           child: Row(
             children: [
               Icon(i, color: AppColors.royal),
@@ -101,7 +101,7 @@ class StudentIdCard extends StatelessWidget {
     final qrSize = compact ? 110.0 : 230.0;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.card,
         borderRadius: BorderRadius.circular(26),
         boxShadow: [
           BoxShadow(
@@ -178,7 +178,7 @@ class StudentIdCard extends StatelessWidget {
         data: StudentCode.encode(s),
         version: QrVersions.auto,
         size: size,
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.all(8),
         backgroundColor: Colors.white,
         eyeStyle: const QrEyeStyle(
             eyeShape: QrEyeShape.square, color: AppColors.night),

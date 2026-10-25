@@ -254,7 +254,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _panel(Widget child) => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(20)),
+            color: AppColors.card, borderRadius: BorderRadius.circular(20)),
         child: child,
       );
 
@@ -319,7 +319,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: Colors.white, borderRadius: BorderRadius.circular(20)),
+          color: AppColors.card, borderRadius: BorderRadius.circular(20)),
       child: Row(
         children: [
           CircleProgress(
@@ -359,7 +359,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         decoration: BoxDecoration(
           color: Colors.white.withOpacity(0.6),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: const Color(0xFFE5E7F0)),
+          border: Border.all(color: AppColors.lineSoft),
         ),
         child: Row(
           children: [

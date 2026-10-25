@@ -154,7 +154,7 @@ class _CourseReportScreenState extends State<CourseReportScreen> {
             : Column(
                 children: [
                   Container(
-                    color: Colors.white,
+                    color: AppColors.card,
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
                     child: Column(
                       children: [

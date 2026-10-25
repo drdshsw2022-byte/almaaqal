@@ -21,7 +21,11 @@ class AppLogo extends StatelessWidget {
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.25),
+              color: const Color(0xFFF59E0B).withOpacity(0.45),
+              blurRadius: size * 0.35,
+              spreadRadius: size * 0.02),
+          BoxShadow(
+              color: Colors.black.withOpacity(0.4),
               blurRadius: size * 0.2,
               offset: Offset(0, size * 0.06)),
         ],
@@ -57,18 +61,19 @@ class GradientHeader extends StatelessWidget {
       decoration: const BoxDecoration(
         gradient: AppColors.mainGradient,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+        border: Border(bottom: BorderSide(color: AppColors.line)),
       ),
       child: Stack(
         children: [
           Positioned(
             left: -40,
             top: -30,
-            child: _bubble(160, Colors.white.withOpacity(0.06)),
+            child: _bubble(170, const Color(0xFFF59E0B).withOpacity(0.10)),
           ),
           Positioned(
             right: -30,
             bottom: -50,
-            child: _bubble(140, AppColors.cyan.withOpacity(0.18)),
+            child: _bubble(140, const Color(0xFF38BDF8).withOpacity(0.06)),
           ),
           Padding(
             padding: EdgeInsets.fromLTRB(20, top + 12, 20, 22),
@@ -83,11 +88,9 @@ class GradientHeader extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(AppConfig.universityName,
+                          const GoldText(AppConfig.universityName,
                               style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 16)),
+                                  fontWeight: FontWeight.w800, fontSize: 16)),
                           Text('${AppConfig.city} • ${AppConfig.appName}',
                               style: TextStyle(
                                   color: Colors.white.withOpacity(0.75),
@@ -105,8 +108,14 @@ class GradientHeader extends StatelessWidget {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        gradient: AppColors.goldGradient,
+                        gradient: AppColors.amberGradient,
                         borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                              color: const Color(0xFFD97706).withOpacity(0.45),
+                              blurRadius: 18,
+                              offset: const Offset(0, 6)),
+                        ],
                       ),
                       child: Icon(roleIcon, color: Colors.white, size: 28),
                     ),
@@ -157,7 +166,10 @@ PreferredSizeWidget gradientAppBar(String title,
     actions: actions,
     bottom: bottom,
     flexibleSpace: Container(
-      decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+      decoration: const BoxDecoration(
+        gradient: AppColors.mainGradient,
+        border: Border(bottom: BorderSide(color: AppColors.line)),
+      ),
     ),
   );
 }
@@ -178,25 +190,21 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: gradient,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: gradient.colors.first.withOpacity(0.35),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          )
-        ],
-      ),
+      padding: const EdgeInsets.all(12),
+      decoration: AppColors.glass(radius: 18),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              gradient: gradient,
               borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                    color: gradient.colors.first.withOpacity(0.4),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4)),
+              ],
             ),
             child: Icon(icon, color: Colors.white, size: 22),
           ),
@@ -212,13 +220,13 @@ class StatCard extends StatelessWidget {
                       style: const TextStyle(
                           color: Colors.white,
                           fontSize: 22,
-                          fontWeight: FontWeight.w800)),
+                          fontWeight: FontWeight.w900)),
                 ),
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: Colors.white.withOpacity(0.9), fontSize: 12)),
+                    style: const TextStyle(
+                        color: AppColors.muted, fontSize: 12)),
               ],
             ),
           ),
@@ -226,6 +234,72 @@ class StatCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// نص بتدرج ذهبي (كعنوان البوابة).
+class GoldText extends StatelessWidget {
+  final String text;
+  final TextStyle? style;
+  final TextAlign? textAlign;
+  const GoldText(this.text, {super.key, this.style, this.textAlign});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      blendMode: BlendMode.srcIn,
+      shaderCallback: (r) => AppColors.titleGradient.createShader(r),
+      child: Text(text,
+          textAlign: textAlign,
+          style: (style ?? const TextStyle()).copyWith(color: Colors.white)),
+    );
+  }
+}
+
+/// خلفية الشبكة النجمية الذهبية (كما في البوابة) خلف كل الصفحات.
+class ConstellationBackground extends StatelessWidget {
+  final Widget child;
+  const ConstellationBackground({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: AppColors.pageBackground,
+      child: CustomPaint(
+        painter: _ConstellationPainter(),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _ConstellationPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // نقاط ثابتة (مولّد شبه عشوائي حتمي) تتصل بخطوط خافتة
+    var seed = 7;
+    double rnd() {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    }
+
+    final n = (size.width * size.height / 16000).clamp(18, 90).toInt();
+    final pts = List.generate(n, (_) => Offset(rnd() * size.width, rnd() * size.height));
+    final line = Paint()
+      ..color = const Color(0xFFF59E0B).withOpacity(0.07)
+      ..strokeWidth = 0.8;
+    final dot = Paint()..color = const Color(0xFFFBBF24).withOpacity(0.35);
+    for (var i = 0; i < pts.length; i++) {
+      for (var j = i + 1; j < pts.length; j++) {
+        if ((pts[i] - pts[j]).distance < 120) {
+          canvas.drawLine(pts[i], pts[j], line);
+        }
+      }
+      canvas.drawCircle(pts[i], 1.6, dot);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class ActionTile extends StatelessWidget {
@@ -246,8 +320,11 @@ class ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
+      color: AppColors.card.withOpacity(0.92),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: const BorderSide(color: AppColors.line),
+      ),
       child: InkWell(
         borderRadius: BorderRadius.circular(22),
         onTap: onTap,
@@ -263,6 +340,12 @@ class ActionTile extends StatelessWidget {
                 decoration: BoxDecoration(
                   gradient: gradient,
                   borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                        color: gradient.colors.first.withOpacity(0.4),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5)),
+                  ],
                 ),
                 child: Icon(icon, color: Colors.white),
               ),
@@ -337,8 +420,9 @@ class EmptyState extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: AppColors.royal.withOpacity(0.08),
+              color: AppColors.royal.withOpacity(0.10),
               shape: BoxShape.circle,
+              border: Border.all(color: AppColors.line),
             ),
             child: Icon(icon, size: 44, color: AppColors.royal),
           ),

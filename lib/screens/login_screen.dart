@@ -114,37 +114,61 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    return Scaffold(
+    return ConstellationBackground(
+      child: Scaffold(
+      backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.mainGradient),
+        decoration: const BoxDecoration(),
         child: Stack(
           children: [
             Positioned(
               top: -60,
               left: -60,
-              child: _glow(220, AppColors.cyan.withOpacity(0.25)),
+              child: _glow(240, const Color(0xFFF59E0B).withOpacity(0.10)),
             ),
             Positioned(
               bottom: -80,
               right: -40,
-              child: _glow(260, AppColors.gold.withOpacity(0.18)),
+              child: _glow(260, const Color(0xFF38BDF8).withOpacity(0.05)),
             ),
             ListView(
               padding: EdgeInsets.fromLTRB(22, top + 40, 22, 30),
               children: [
                 const Center(child: AppLogo(size: 108)),
                 const SizedBox(height: 18),
-                const Text(AppConfig.universityName,
+                const GoldText(AppConfig.universityName,
                     textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 27,
-                        fontWeight: FontWeight.w900)),
+                    style:
+                        TextStyle(fontSize: 29, fontWeight: FontWeight.w900)),
                 Text('${AppConfig.city} • النظام الجامعي المتكامل',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Colors.white.withOpacity(0.8), fontSize: 14)),
-                const SizedBox(height: 30),
+                const SizedBox(height: 12),
+                Center(
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(30),
+                      border: Border.all(color: AppColors.line),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.circle, size: 8, color: AppColors.emerald),
+                        SizedBox(width: 6),
+                        Text('كلية الهندسة · قسم هندسة الأمن السيبراني',
+                            style: TextStyle(
+                                color: AppColors.gold,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 _card(),
                 if (repo.isDemo) ...[
                   const SizedBox(height: 16),
@@ -155,22 +179,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _card() {
     return Container(
       padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.2),
-              blurRadius: 30,
-              offset: const Offset(0, 14))
-        ],
-      ),
+      decoration: AppColors.glass(radius: 26, glow: true),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -258,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFF1F2F9),
+        color: AppColors.surface2,
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -271,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
-                  gradient: on ? AppColors.mainGradient : null,
+                  gradient: on ? AppColors.amberGradient : null,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
@@ -302,8 +317,14 @@ class _LoginScreenState extends State<LoginScreen> {
         child: Ink(
           height: 54,
           decoration: BoxDecoration(
-            gradient: AppColors.mainGradient,
+            gradient: AppColors.amberGradient,
             borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                  color: const Color(0xFFD97706).withOpacity(0.4),
+                  blurRadius: 18,
+                  offset: const Offset(0, 4)),
+            ],
           ),
           child: InkWell(
             borderRadius: BorderRadius.circular(16),

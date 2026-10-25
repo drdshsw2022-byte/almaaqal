@@ -201,7 +201,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   Widget _tile(Course c) {
     final g = AppColors.tilePalette[(c.stage - 1) % AppColors.tilePalette.length];
     return Material(
-      color: Colors.white,
+      color: AppColors.card,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
