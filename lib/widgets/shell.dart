@@ -124,7 +124,7 @@ class KShell extends StatelessWidget {
                               color: AppColors.gold,
                               fontWeight: FontWeight.w700,
                               fontSize: 11.5)),
-                      Text('AL-MAAQAL UNIVERSITY',
+                      Text('AL-MAAQAL INTERNATIONAL UNIVERSITY',
                           textDirection: TextDirection.ltr,
                           style: TextStyle(
                               fontFamily: 'monospace',

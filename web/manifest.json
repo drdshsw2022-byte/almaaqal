@@ -1,11 +1,11 @@
 {
-  "name": "جامعة المعقل الأهلية - النظام الجامعي",
+  "name": "جامعة المعقل الدولية - النظام الجامعي",
   "short_name": "جامعة المعقل",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#060A17",
   "theme_color": "#060A17",
-  "description": "الحضور والغياب والدرجات والدروس - جامعة المعقل الأهلية في البصرة",
+  "description": "الحضور والغياب والدرجات والدروس - جامعة المعقل الدولية في البصرة",
   "orientation": "portrait-primary",
   "lang": "ar",
   "dir": "rtl",

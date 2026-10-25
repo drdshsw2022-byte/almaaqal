@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 /// إعدادات Firebase تُمرَّر وقت البناء عبر --dart-define (انظر README).
 /// إذا تُركت فارغة يعمل التطبيق في "الوضع التجريبي" المحلي على جهاز واحد.
 class AppConfig {
-  static const universityName = 'جامعة المعقل الأهلية';
+  static const universityName = 'جامعة المعقل الدولية';
   static const city = 'البصرة';
   static const appName = 'نظام الحضور الذكي';
 
