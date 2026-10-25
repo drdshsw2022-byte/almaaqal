@@ -22,12 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _busy = false;
   Portal _portal = Portal.management;
 
-  static const _tabs = [
-    (Portal.management, 'الإدارة', Icons.account_balance_rounded),
-    (Portal.teacher, 'التدريسي', Icons.co_present_rounded),
-    (Portal.student, 'الطالب', Icons.school_rounded),
-  ];
-
   /// هل يطابق الحساب التبويب المختار؟
   String? _mismatch(AppUser u) {
     switch (_portal) {
@@ -58,6 +52,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _finish(AppUser u, bool mustChange) async {
+    // البوابة تُحدَّد تلقائياً من نوع الحساب (كما في نظام الكنترول)
+    _portal = u.role == Role.student
+        ? Portal.student
+        : isManagement(u.role)
+            ? Portal.management
+            : Portal.teacher;
     final why = _mismatch(u);
     if (why != null) {
       await repo.signOut();
@@ -71,20 +71,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInPassword() async {
     final user = _user.text.trim();
     if (user.isEmpty) {
-      showSnack(
-          context,
-          _portal == Portal.student
-              ? 'خانة الرقم المعرفي فارغة'
-              : 'خانة اسم المستخدم فارغة',
-          error: true);
+      showSnack(context, 'خانة اسم المستخدم فارغة', error: true);
       return;
     }
     if (_pw.text.isEmpty) {
       showSnack(context, 'خانة كلمة المرور فارغة', error: true);
-      return;
-    }
-    if (_portal == Portal.student && !RegExp(r'^[0-9]+$').hasMatch(user)) {
-      showSnack(context, 'الرقم المعرفي أرقام فقط', error: true);
       return;
     }
     setState(() => _busy = true);
@@ -280,44 +271,39 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 10),
           const Text('تسجيل الدخول',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
-          Text(
-              _portal == Portal.student
-                  ? 'بالرقم الجامعي وكلمة المرور.'
-                  : 'بحساب تطبيق الحضور (مثل doc01 أو admin).',
-              style: const TextStyle(color: AppColors.muted, fontSize: 13)),
-          const SizedBox(height: 14),
-          _tabBar(),
-          const SizedBox(height: 14),
+          const SizedBox(height: 4),
+          const Text(
+              'بحساب تطبيق الحضور (مثل doc01 أو admin)، والطالب برقمه الجامعي.',
+              style: TextStyle(color: AppColors.muted, fontSize: 13)),
+          const SizedBox(height: 16),
+          _label('اسم المستخدم'),
           TextField(
             controller: _user,
             autocorrect: false,
             enableSuggestions: false,
-            keyboardType: _portal == Portal.student
-                ? TextInputType.number
-                : TextInputType.text,
             textDirection: TextDirection.ltr,
             textInputAction: TextInputAction.next,
-            decoration: InputDecoration(
-              labelText: _portal == Portal.student
-                  ? 'الرقم المعرفي (الجامعي)'
-                  : 'اسم المستخدم',
-              prefixIcon: Icon(_portal == Portal.student
-                  ? Icons.badge_outlined
-                  : Icons.person_outline),
-            ),
+            autofillHints: const [AutofillHints.username],
+            style: const TextStyle(fontSize: 16),
+            decoration: _input(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
+          _label('كلمة المرور'),
           TextField(
             controller: _pw,
             obscureText: _obscure,
+            textDirection: TextDirection.ltr,
+            autofillHints: const [AutofillHints.password],
             onSubmitted: (_) => _signInPassword(),
-            decoration: InputDecoration(
-              labelText: 'كلمة المرور',
-              prefixIcon: const Icon(Icons.lock_outline),
-              suffixIcon: IconButton(
-                icon: Icon(_obscure
-                    ? Icons.visibility_outlined
-                    : Icons.visibility_off_outlined),
+            style: const TextStyle(fontSize: 16),
+            decoration: _input(
+              suffix: IconButton(
+                icon: Icon(
+                    _obscure
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                    size: 19,
+                    color: AppColors.muted),
                 onPressed: () => setState(() => _obscure = !_obscure),
               ),
             ),
@@ -325,85 +311,55 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 18),
           _loginButton(),
           if (!repo.isDemo && !kIsWeb) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                const Expanded(child: Divider()),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  child: Text('أو',
-                      style: TextStyle(color: Colors.grey.shade500)),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 48,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: const Color(0xFF0B1222),
+                  side: const BorderSide(color: Color(0x33FFFFFF)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
-                const Expanded(child: Divider()),
-              ],
-            ),
-            const SizedBox(height: 14),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : () => _signInGoogle(),
-              icon: const _GoogleMark(),
-              label: const Text('بحساب Google الجامعي'),
-            ),
-            if (_portal == Portal.management)
-              TextButton(
-                onPressed: _busy ? null : () => _signInGoogle(superAdmin: true),
-                child: const Text('دخول المدير العام بحساب آخر',
-                    style: TextStyle(fontSize: 12)),
+                onPressed: _busy ? null : () => _signInGoogle(),
+                child: const Text('الدخول بحساب Google الجامعي',
+                    style:
+                        TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800)),
               ),
+            ),
           ],
-          const SizedBox(height: 6),
-          Text(
-            _portal == Portal.student
-                ? 'أول دخول: كلمة المرور الأولية هي رقمك المعرفي، وسيُطلب منك تغييرها.'
-                : 'أول دخول: استخدم كلمة المرور الأولية التي سلّمتها لك الإدارة، وسيُطلب منك تغييرها.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
-          ),
         ],
       ),
     );
   }
 
-  Widget _tabBar() {
-    return Container(
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.lineSoft),
-      ),
-      child: Row(
-        children: _tabs.map((t) {
-          final on = t.$1 == _portal;
-          return Expanded(
-            child: GestureDetector(
-              onTap: _busy ? null : () => setState(() => _portal = t.$1),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: on ? AppColors.amberGradient : null,
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(t.$3,
-                        size: 17, color: on ? Colors.white : AppColors.muted),
-                    const SizedBox(width: 5),
-                    Text(t.$2,
-                        style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: on ? Colors.white : AppColors.muted)),
-                  ],
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
+  Widget _label(String t) => Padding(
+        padding: const EdgeInsets.only(bottom: 6, right: 2, left: 2),
+        child: Text(t,
+            style: const TextStyle(
+                color: Color(0xFFCBD5E1),
+                fontSize: 13,
+                fontWeight: FontWeight.w800)),
+      );
+
+  InputDecoration _input({Widget? suffix}) => InputDecoration(
+        filled: true,
+        fillColor: const Color(0xFF243049),
+        isDense: true,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+        suffixIcon: suffix,
+        border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: const BorderSide(color: AppColors.gold, width: 1.2)),
+      );
 
   Widget _loginButton() {
     return Opacity(
@@ -435,8 +391,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   : const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.login, color: Colors.white),
-                        SizedBox(width: 8),
                         Text('دخول',
                             style: TextStyle(
                                 color: Colors.white,
@@ -475,35 +429,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   }
-
-class _GoogleMark extends StatelessWidget {
-  const _GoogleMark();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 22,
-      height: 22,
-      alignment: Alignment.center,
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: SweepGradient(colors: [
-          Color(0xFFEA4335),
-          Color(0xFFFBBC05),
-          Color(0xFF34A853),
-          Color(0xFF4285F4),
-          Color(0xFFEA4335),
-        ]),
-      ),
-      child: const Text('G',
-          style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
-              height: 1.1)),
-    );
-  }
-}
 
 class _LoginGrid extends CustomPainter {
   const _LoginGrid();
