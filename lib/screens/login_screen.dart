@@ -113,63 +113,181 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
-    return ConstellationBackground(
-      child: Scaffold(
+    return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(),
+      body: DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment(-0.6, -1),
+            end: Alignment(0.6, 1),
+            colors: [Color(0xFF141C33), Color(0xFF070B16)],
+            stops: [0, 0.7],
+          ),
+        ),
         child: Stack(
           children: [
-            Positioned(
-              top: -60,
-              left: -60,
-              child: _glow(240, const Color(0xFFF59E0B).withOpacity(0.10)),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(-0.4, -0.8),
+                    radius: 0.9,
+                    colors: [
+                      const Color(0xFFF59E0B).withOpacity(0.22),
+                      Colors.transparent
+                    ],
+                  ),
+                ),
+              ),
             ),
-            Positioned(
-              bottom: -80,
-              right: -40,
-              child: _glow(260, const Color(0xFF38BDF8).withOpacity(0.05)),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0.8, 0.8),
+                    radius: 0.8,
+                    colors: [
+                      const Color(0xFF0EA5E9).withOpacity(0.12),
+                      Colors.transparent
+                    ],
+                  ),
+                ),
+              ),
             ),
-            ListView(
-              padding: EdgeInsets.fromLTRB(22, top + 40, 22, 30),
-              children: [
-                const Center(child: AppLogo(size: 108)),
-                const SizedBox(height: 18),
-                const GoldText(AppConfig.universityName,
-                    textAlign: TextAlign.center,
-                    style:
-                        TextStyle(fontSize: 29, fontWeight: FontWeight.w900)),
-                Text('${AppConfig.city} • النظام الجامعي المتكامل',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: Colors.white.withOpacity(0.8), fontSize: 14)),
-                const SizedBox(height: 24),
-                _card(),
-                if (repo.isDemo) ...[
-                  const SizedBox(height: 16),
-                  _localBanner(),
-                ],
-              ],
+            const Positioned.fill(child: CustomPaint(painter: _LoginGrid())),
+            SafeArea(
+              child: LayoutBuilder(builder: (context, c) {
+                final wide = c.maxWidth >= 860;
+                final content = wide
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Expanded(child: _hero(240)),
+                          const SizedBox(width: 40),
+                          SizedBox(width: 420, child: _box()),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _hero(150),
+                          const SizedBox(height: 20),
+                          _box(),
+                        ],
+                      );
+                return Center(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 18, vertical: 24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1040),
+                      child: content,
+                    ),
+                  ),
+                );
+              }),
             ),
           ],
         ),
       ),
-    ));
+    );
   }
 
-  Widget _card() {
+  Widget _hero(double crest) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: crest,
+          height: crest,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                  color: const Color(0xFFFBBF24).withOpacity(0.40),
+                  blurRadius: 46,
+                  spreadRadius: 2),
+            ],
+          ),
+          child: Image.asset('assets/images/crest.png', fit: BoxFit.contain),
+        ),
+        const SizedBox(height: 18),
+        Text(AppConfig.universityName,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: Colors.white,
+                fontSize: crest > 200 ? 40 : 29,
+                height: 1.2,
+                fontWeight: FontWeight.w900)),
+        const SizedBox(height: 6),
+        GoldText('نظام الحضور الذكي والنتائج',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                fontSize: crest > 200 ? 25 : 19, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 10),
+        const Text('AL-MAAQAL INTERNATIONAL UNIVERSITY · BASRA',
+            textAlign: TextAlign.center,
+            textDirection: TextDirection.ltr,
+            style: TextStyle(
+                fontFamily: 'monospace',
+                color: AppColors.muted,
+                fontSize: 11.5,
+                letterSpacing: 1.8)),
+        if (repo.isDemo) ...[
+          const SizedBox(height: 16),
+          _localBanner(),
+        ],
+      ],
+    );
+  }
+
+  Widget _box() {
     return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: AppColors.glass(radius: 26, glow: true),
+      padding: const EdgeInsets.all(26),
+      decoration: BoxDecoration(
+        color: const Color(0xF50F172A),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: const Color(0x80FBBF24)),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.55),
+              blurRadius: 60,
+              offset: const Offset(0, 28)),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 1),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFBBF24).withOpacity(0.14),
+                borderRadius: BorderRadius.circular(7),
+                border: Border.all(color: AppColors.line),
+              ),
+              child: const Text('SECURE SIGN-IN',
+                  textDirection: TextDirection.ltr,
+                  style: TextStyle(
+                      fontFamily: 'monospace',
+                      color: AppColors.gold,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.7)),
+            ),
+          ),
+          const SizedBox(height: 10),
+          const Text('تسجيل الدخول',
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+          Text(
+              _portal == Portal.student
+                  ? 'بالرقم الجامعي وكلمة المرور.'
+                  : 'بحساب تطبيق الحضور (مثل doc01 أو admin).',
+              style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+          const SizedBox(height: 14),
           _tabBar(),
-          const SizedBox(height: 18),
-          Text('دخول ${_tabs.firstWhere((t) => t.$1 == _portal).$2}',
-              style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           TextField(
             controller: _user,
             autocorrect: false,
@@ -247,10 +365,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Widget _tabBar() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: AppColors.surface2,
-        borderRadius: BorderRadius.circular(18),
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.lineSoft),
       ),
       child: Row(
         children: _tabs.map((t) {
@@ -260,19 +379,20 @@ class _LoginScreenState extends State<LoginScreen> {
               onTap: _busy ? null : () => setState(() => _portal = t.$1),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
                   gradient: on ? AppColors.amberGradient : null,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(9),
                 ),
-                child: Column(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(t.$3,
-                        size: 22, color: on ? Colors.white : AppColors.muted),
-                    const SizedBox(height: 2),
+                        size: 17, color: on ? Colors.white : AppColors.muted),
+                    const SizedBox(width: 5),
                     Text(t.$2,
                         style: TextStyle(
-                            fontSize: 13,
+                            fontSize: 12.5,
                             fontWeight: FontWeight.w800,
                             color: on ? Colors.white : AppColors.muted)),
                   ],
@@ -291,10 +411,10 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Material(
         color: Colors.transparent,
         child: Ink(
-          height: 54,
+          height: 48,
           decoration: BoxDecoration(
             gradient: AppColors.amberGradient,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
                   color: const Color(0xFFD97706).withOpacity(0.4),
@@ -303,7 +423,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           child: InkWell(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
             onTap: _busy ? null : _signInPassword,
             child: Center(
               child: _busy
@@ -317,10 +437,10 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Icon(Icons.login, color: Colors.white),
                         SizedBox(width: 8),
-                        Text('تسجيل الدخول',
+                        Text('دخول',
                             style: TextStyle(
                                 color: Colors.white,
-                                fontSize: 17,
+                                fontSize: 16,
                                 fontWeight: FontWeight.w800)),
                       ],
                     ),
@@ -354,12 +474,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _glow(double s, Color c) => Container(
-        width: s,
-        height: s,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: c),
-      );
-}
+  }
 
 class _GoogleMark extends StatelessWidget {
   const _GoogleMark();
@@ -388,4 +503,23 @@ class _GoogleMark extends StatelessWidget {
               height: 1.1)),
     );
   }
+}
+
+class _LoginGrid extends CustomPainter {
+  const _LoginGrid();
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = const Color(0xFFFBBF24).withOpacity(0.05)
+      ..strokeWidth = 1;
+    for (var x = 0.0; x < size.width; x += 40) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+    }
+    for (var y = 0.0; y < size.height; y += 40) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
