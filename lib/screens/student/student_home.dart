@@ -6,8 +6,8 @@ import '../../models.dart';
 import '../../services/nfc_service.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/shell.dart';
 import '../common/lessons_screen.dart';
-import '../common/profile_sheet.dart';
 import '../common/student_report_screen.dart';
 import 'id_card_screen.dart';
 
@@ -103,7 +103,18 @@ class _StudentHomeState extends State<StudentHome> {
   Widget build(BuildContext context) {
     final me = _me;
     final pages = [_homeTab(me), _absenceTab(me), _gradesTab(), _lessonsTab()];
-    return ConstellationBackground(
+    const tabs = ['الرئيسية', 'الغياب', 'الدرجات', 'الدروس'];
+    return KShell(
+      roleTitle: me.name,
+      roleSubtitle: 'طالب • ${stageName(me.stage)}',
+      items: const [
+        KNavItem(Icons.home_rounded, 'الرئيسية', group: 'لوحتي'),
+        KNavItem(Icons.event_busy_rounded, 'الغياب'),
+        KNavItem(Icons.grading_rounded, 'الدرجات'),
+        KNavItem(Icons.menu_book_rounded, 'الدروس'),
+      ],
+      selected: _tab,
+      onSelect: (i) => setState(() => _tab = i),
       child: Scaffold(
       backgroundColor: Colors.transparent,
       body: RefreshIndicator(
@@ -116,30 +127,33 @@ class _StudentHomeState extends State<StudentHome> {
               subtitle:
                   'الرقم الجامعي: ${me.id} • ${stageName(me.stage)} • ${shiftName(me.shift)}${_deptName != null ? '\n$_deptName' : ''}',
               roleIcon: Icons.school_rounded,
-              actions: [
-                IconButton(
-                  onPressed: () => showProfileSheet(context),
-                  icon: const Icon(Icons.account_circle_outlined,
-                      color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () => logout(context),
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                ),
+              chips: [
+                'ID · ${me.id}',
+                shiftName(me.shift),
+                termName(AppState.settings.currentTerm),
               ],
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 30),
               child: _loading
                   ? const Padding(
                       padding: EdgeInsets.all(40),
                       child: Center(child: CircularProgressIndicator()))
-                  : pages[_tab],
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        KSectionHeader(
+                            tag: '0${_tab + 1}. ${['HOME', 'ABSENCE', 'GRADES', 'LESSONS'][_tab]}',
+                            title: tabs[_tab]),
+                        pages[_tab],
+                      ],
+                    ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBar(
+      ),
+      bottomNav: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
@@ -161,7 +175,7 @@ class _StudentHomeState extends State<StudentHome> {
               label: 'الدروس'),
         ],
       ),
-    ));
+    );
   }
 
   // ---------------- الرئيسية ----------------

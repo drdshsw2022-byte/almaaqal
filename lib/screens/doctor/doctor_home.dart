@@ -4,8 +4,8 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
+import '../../widgets/shell.dart';
 import '../common/course_picker.dart';
-import '../common/profile_sheet.dart';
 import '../common/reports_screen.dart';
 import '../common/lessons_screen.dart';
 import 'grades_screen.dart';
@@ -27,6 +27,7 @@ class _DoctorHomeState extends State<DoctorHome> {
   List<LectureSession> _sessions = [];
   Map<String, String> _deptNames = {};
   bool _allTerms = false;
+  int _sel = 0;
 
   Staff get _me => AppState.user.value!.staff!;
 
@@ -197,8 +198,7 @@ class _DoctorHomeState extends State<DoctorHome> {
     final p = AppColors.tilePalette;
     final shown = _shownCourses;
 
-    return ConstellationBackground(
-      child: Scaffold(
+    final home = Scaffold(
       backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _manageCourses,
@@ -215,24 +215,10 @@ class _DoctorHomeState extends State<DoctorHome> {
               subtitle:
                   '${roleName(_me.role)} • ${_me.deptId != null ? (_deptNames[_me.deptId] ?? '') : termName(AppState.settings.currentTerm)}',
               roleIcon: Icons.co_present_rounded,
-              actions: widget.embedded
-                  ? [
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.arrow_back,
-                            color: Colors.white),
-                      ),
-                    ]
-                  : [
-                IconButton(
-                  onPressed: () => showProfileSheet(context),
-                  icon: const Icon(Icons.account_circle_outlined,
-                      color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () => logout(context),
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                ),
+              chips: [
+                'COURSES · ${_courses.length}',
+                'TODAY · $today',
+                termName(AppState.settings.currentTerm),
               ],
               bottom: Row(
                 children: [
@@ -292,7 +278,35 @@ class _DoctorHomeState extends State<DoctorHome> {
           ],
         ),
       ),
-    ));
+    );
+    if (widget.embedded) return home;
+    return KShell(
+      roleTitle: _me.name,
+      roleSubtitle: roleName(_me.role),
+      items: const [
+        KNavItem(Icons.space_dashboard_rounded, 'لوحة المحاضرات',
+            group: 'الرئيسية'),
+        KNavItem(Icons.cloud_upload_rounded, 'رفع نتائج الطلبة',
+            group: 'النتائج'),
+        KNavItem(Icons.library_add_rounded, 'موادي الدراسية',
+            group: 'الإعدادات'),
+      ],
+      selected: _sel,
+      onSelect: (i) {
+        if (i == 2) {
+          _manageCourses();
+          return;
+        }
+        setState(() => _sel = i);
+        if (i == 0) _load();
+      },
+      child: KSection(
+        key: ValueKey(_sel),
+        builder: (_) => _sel == 0
+            ? home
+            : ResultsUploadScreen(myCourses: _courses),
+      ),
+    );
   }
 
   Future<void> _openResults([Course? c]) async {
@@ -314,8 +328,8 @@ class _DoctorHomeState extends State<DoctorHome> {
             child: Row(
               children: [
                 Container(
-                  width: 50,
-                  height: 50,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                       gradient: AppColors.tilePalette[2],
                       borderRadius: BorderRadius.circular(14)),
@@ -454,8 +468,8 @@ class _DoctorHomeState extends State<DoctorHome> {
           ListTile(
             contentPadding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
             leading: Container(
-              width: 50,
-              height: 50,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                   gradient: g, borderRadius: BorderRadius.circular(16)),
               child: const Icon(Icons.auto_stories, color: Colors.white),

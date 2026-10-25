@@ -159,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   const SizedBox(height: 12),
                   GridView(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 280, mainAxisExtent: 80,
+                      maxCrossAxisExtent: 230, mainAxisExtent: 70,
                       mainAxisSpacing: 10, crossAxisSpacing: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),

@@ -166,27 +166,27 @@ class _CourseBrowserState extends State<CourseBrowser> {
             final cs = widget.courses.where((c) => c.deptId == d.id);
             final stages = cs.map((c) => c.stage).toSet().length;
             return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 8),
               child: Material(
                 color: AppColors.card,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(14),
                 child: InkWell(
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(14),
                   onTap: () => _set(dept: d.id),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                     child: Row(
                       children: [
                         Container(
-                          width: 56,
-                          height: 56,
+                          width: 40,
+                          height: 40,
                           decoration: BoxDecoration(
                             gradient: AppColors.tilePalette[
                                 i % AppColors.tilePalette.length],
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(11),
                           ),
                           child: const Icon(Icons.apartment_rounded,
-                              color: Colors.white, size: 30),
+                              color: Colors.white, size: 21),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -196,7 +196,7 @@ class _CourseBrowserState extends State<CourseBrowser> {
                               Text(d.name,
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w800,
-                                      fontSize: 16)),
+                                      fontSize: 14.5)),
                               Text('$stages مراحل • ${cs.length} مادة',
                                   style: const TextStyle(
                                       color: AppColors.muted, fontSize: 12)),
@@ -227,19 +227,19 @@ class _CourseBrowserState extends State<CourseBrowser> {
       key: ValueKey('stages-$_dept'),
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 300, mainAxisExtent: 150,
+                      maxCrossAxisExtent: 240, mainAxisExtent: 100,
                       mainAxisSpacing: 12, crossAxisSpacing: 12),
       
       children: stages.map((st) {
         final sc = cs.where((c) => c.stage == st);
         return Material(
           color: AppColors.card,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(14),
           child: InkWell(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(14),
             onTap: () => _set(stage: st),
             child: Padding(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(11),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -247,18 +247,18 @@ class _CourseBrowserState extends State<CourseBrowser> {
                   Row(
                     children: [
                       Container(
-                        width: 46,
-                        height: 46,
+                        width: 34,
+                        height: 34,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
                           gradient: AppColors.tilePalette[
                               (st - 1) % AppColors.tilePalette.length],
-                          borderRadius: BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text('$st',
                             style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 22,
+                                fontSize: 17,
                                 fontWeight: FontWeight.w900)),
                       ),
                       const Spacer(),
@@ -270,7 +270,7 @@ class _CourseBrowserState extends State<CourseBrowser> {
                     children: [
                       Text(stageName(st),
                           style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 15)),
+                              fontWeight: FontWeight.w800, fontSize: 14)),
                       Text(
                           'الكورس الأول ${sc.where((c) => c.term == 1).length} • الثاني ${sc.where((c) => c.term == 2).length}',
                           style: const TextStyle(

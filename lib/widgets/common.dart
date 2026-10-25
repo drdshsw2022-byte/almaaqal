@@ -37,13 +37,14 @@ class AppLogo extends StatelessWidget {
   }
 }
 
-/// ترويسة متدرجة للوحات التحكم.
+/// بطاقة ترحيب (Hero) بنمط نظام الكنترول.
 class GradientHeader extends StatelessWidget {
   final String title;
   final String subtitle;
   final List<Widget> actions;
   final Widget? bottom;
   final IconData roleIcon;
+  final List<String> chips;
 
   const GradientHeader({
     super.key,
@@ -52,128 +53,152 @@ class GradientHeader extends StatelessWidget {
     this.actions = const [],
     this.bottom,
     this.roleIcon = Icons.person,
+    this.chips = const [],
   });
 
   @override
   Widget build(BuildContext context) {
-    final top = MediaQuery.of(context).padding.top;
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppColors.mainGradient,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-        border: Border(bottom: BorderSide(color: AppColors.line)),
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
+          colors: [Color(0xFF1A1F2E), Color(0xFF0E1527), Color(0xFF0B1120)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.line),
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.35),
+              blurRadius: 24,
+              offset: const Offset(0, 10)),
+        ],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned(
-            left: -40,
-            top: -30,
-            child: _bubble(170, const Color(0xFFF59E0B).withOpacity(0.10)),
-          ),
-          Positioned(
-            right: -30,
-            bottom: -50,
-            child: _bubble(140, const Color(0xFF38BDF8).withOpacity(0.06)),
-          ),
-          Padding(
-            padding: EdgeInsets.fromLTRB(20, top + 12, 20, 22),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const AppLogo(size: 42),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const GoldText(AppConfig.universityName,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 16)),
-                          Text('${AppConfig.city} • ${AppConfig.appName}',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.75),
-                                  fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                    ...actions,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: AppColors.amberGradient,
+                  borderRadius: BorderRadius.circular(13),
+                  boxShadow: [
+                    BoxShadow(
+                        color: const Color(0xFFD97706).withOpacity(0.4),
+                        blurRadius: 16,
+                        offset: const Offset(0, 5)),
                   ],
                 ),
-                const SizedBox(height: 22),
-                Row(
+                child: Icon(roleIcon, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      width: 52,
-                      height: 52,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 1),
                       decoration: BoxDecoration(
-                        gradient: AppColors.amberGradient,
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                              color: const Color(0xFFD97706).withOpacity(0.45),
-                              blurRadius: 18,
-                              offset: const Offset(0, 6)),
-                        ],
+                        color: const Color(0xFFF59E0B).withOpacity(0.13),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.line),
                       ),
-                      child: Icon(roleIcon, color: Colors.white, size: 28),
+                      child: Text(
+                          '${AppConfig.universityName} • ${AppConfig.appName}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w700)),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 21,
-                                  fontWeight: FontWeight.w800)),
-                          Text(subtitle,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 13)),
-                        ],
-                      ),
-                    ),
+                    const SizedBox(height: 5),
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 19,
+                            fontWeight: FontWeight.w900,
+                            height: 1.3)),
+                    Text(subtitle,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: AppColors.gold, fontSize: 12.5)),
                   ],
                 ),
-                if (bottom != null) ...[const SizedBox(height: 18), bottom!],
-              ],
-            ),
+              ),
+              ...actions,
+            ],
           ),
+          if (chips.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [for (final c in chips) MonoChip(c)],
+            ),
+          ],
+          if (bottom != null) ...[const SizedBox(height: 14), bottom!],
         ],
       ),
     );
   }
-
-  Widget _bubble(double s, Color c) => Container(
-        width: s,
-        height: s,
-        decoration: BoxDecoration(shape: BoxShape.circle, color: c),
-      );
 }
 
-/// شريط تطبيق متدرج للصفحات الداخلية.
+/// شارة صغيرة بخط أحادي المسافة (كوسوم نظام الكنترول).
+class MonoChip extends StatelessWidget {
+  final String text;
+  final Color color;
+  const MonoChip(this.text, {super.key, this.color = AppColors.muted});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(color: AppColors.lineSoft),
+      ),
+      child: Text(text,
+          style: TextStyle(
+              fontFamily: 'monospace',
+              color: color,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700)),
+    );
+  }
+}
+
+/// شريط تطبيق نحيف للصفحات الداخلية.
 PreferredSizeWidget gradientAppBar(String title,
     {List<Widget>? actions, PreferredSizeWidget? bottom}) {
   return AppBar(
-    title: Text(title),
+    title: Text(title,
+        style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w800)),
+    centerTitle: false,
+    toolbarHeight: 50,
     actions: actions,
     bottom: bottom,
+    backgroundColor: const Color(0xE60B1120),
     flexibleSpace: Container(
       decoration: const BoxDecoration(
-        gradient: AppColors.mainGradient,
-        border: Border(bottom: BorderSide(color: AppColors.line)),
+        border: Border(bottom: BorderSide(color: AppColors.lineSoft)),
       ),
     ),
   );
 }
 
+/// بطاقة إحصائية مدمجة: رقم كبير + وصف قصير.
 class StatCard extends StatelessWidget {
   final String label;
   final String value;
@@ -189,29 +214,20 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = gradient.colors.first;
     return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: AppColors.glass(radius: 18),
+      padding: const EdgeInsets.fromLTRB(14, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: AppColors.card.withOpacity(0.85),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.lineSoft),
+      ),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(9),
-            decoration: BoxDecoration(
-              gradient: gradient,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                    color: gradient.colors.first.withOpacity(0.4),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 FittedBox(
                   fit: BoxFit.scaleDown,
@@ -219,16 +235,26 @@ class StatCard extends StatelessWidget {
                   child: Text(value,
                       style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 22,
+                          fontSize: 25,
+                          height: 1.15,
                           fontWeight: FontWeight.w900)),
                 ),
                 Text(label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                        color: AppColors.muted, fontSize: 12)),
+                        color: AppColors.muted, fontSize: 11.5)),
               ],
             ),
+          ),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: c.withOpacity(0.16),
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: c, size: 18),
           ),
         ],
       ),
@@ -255,7 +281,7 @@ class GoldText extends StatelessWidget {
   }
 }
 
-/// خلفية الشبكة النجمية الذهبية (كما في البوابة) خلف كل الصفحات.
+/// خلفية نظام الكنترول: خطوط شبكة ذهبية خافتة فوق تدرج داكن.
 class ConstellationBackground extends StatelessWidget {
   final Widget child;
   const ConstellationBackground({super.key, required this.child});
@@ -263,38 +289,34 @@ class ConstellationBackground extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: AppColors.pageBackground,
+      decoration: const BoxDecoration(
+        gradient: RadialGradient(
+          center: Alignment(0.6, -1.0),
+          radius: 1.6,
+          colors: [Color(0xFF0C1426), Color(0xFF070B16), Color(0xFF05080F)],
+          stops: [0, 0.55, 1],
+        ),
+      ),
       child: CustomPaint(
-        painter: _ConstellationPainter(),
+        painter: _GridPainter(),
         child: child,
       ),
     );
   }
 }
 
-class _ConstellationPainter extends CustomPainter {
+class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    // نقاط ثابتة (مولّد شبه عشوائي حتمي) تتصل بخطوط خافتة
-    var seed = 7;
-    double rnd() {
-      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
-      return seed / 0x7fffffff;
+    const step = 34.0;
+    final p = Paint()
+      ..color = const Color(0xFFFBBF24).withOpacity(0.045)
+      ..strokeWidth = 1;
+    for (var x = 0.0; x < size.width; x += step) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
     }
-
-    final n = (size.width * size.height / 16000).clamp(18, 90).toInt();
-    final pts = List.generate(n, (_) => Offset(rnd() * size.width, rnd() * size.height));
-    final line = Paint()
-      ..color = const Color(0xFFF59E0B).withOpacity(0.07)
-      ..strokeWidth = 0.8;
-    final dot = Paint()..color = const Color(0xFFFBBF24).withOpacity(0.35);
-    for (var i = 0; i < pts.length; i++) {
-      for (var j = i + 1; j < pts.length; j++) {
-        if ((pts[i] - pts[j]).distance < 120) {
-          canvas.drawLine(pts[i], pts[j], line);
-        }
-      }
-      canvas.drawCircle(pts[i], 1.6, dot);
+    for (var y = 0.0; y < size.height; y += step) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
     }
   }
 
@@ -302,6 +324,7 @@ class _ConstellationPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+/// زر إجراء أفقي مدمج: أيقونة + عنوان + وصف.
 class ActionTile extends StatelessWidget {
   final String title;
   final String? subtitle;
@@ -320,51 +343,50 @@ class ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.card.withOpacity(0.92),
+      color: AppColors.card.withOpacity(0.85),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(color: AppColors.line),
+        borderRadius: BorderRadius.circular(14),
+        side: const BorderSide(color: AppColors.lineSoft),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(14),
+        hoverColor: const Color(0xFFF59E0B).withOpacity(0.06),
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   gradient: gradient,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                        color: gradient.colors.first.withOpacity(0.4),
-                        blurRadius: 14,
-                        offset: const Offset(0, 5)),
-                  ],
+                  borderRadius: BorderRadius.circular(11),
                 ),
-                child: Icon(icon, color: Colors.white),
+                child: Icon(icon, color: Colors.white, size: 20),
               ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 15)),
-                  if (subtitle != null)
-                    Text(subtitle!,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                            color: AppColors.muted, fontSize: 12)),
-                ],
+                            fontWeight: FontWeight.w800, fontSize: 14)),
+                    if (subtitle != null)
+                      Text(subtitle!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.muted, fontSize: 11.5)),
+                  ],
+                ),
               ),
+              const Icon(Icons.chevron_right_rounded,
+                  size: 18, color: AppColors.muted),
             ],
           ),
         ),

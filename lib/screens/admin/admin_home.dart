@@ -4,7 +4,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../../widgets/common.dart';
-import '../common/profile_sheet.dart';
+import '../../widgets/shell.dart';
 import '../common/reports_screen.dart';
 import '../doctor/doctor_home.dart';
 import '../doctor/results_upload_screen.dart';
@@ -28,6 +28,7 @@ class _AdminHomeState extends State<AdminHome> {
   bool _seeded = true;
   int _students = 0, _doctors = 0, _courses = 0, _depts = 0, _today = 0;
   List<LectureSession> _recent = [];
+  int _sel = 0;
 
   @override
   void initState() {
@@ -114,29 +115,109 @@ class _AdminHomeState extends State<AdminHome> {
     _load();
   }
 
-  void _open(Widget page) async {
-    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-    _load();
+  /// صفحات القائمة الجانبية.
+  List<({KNavItem item, Widget Function() page})> _pages(bool top, bool teaches) => [
+        (
+          item: const KNavItem(Icons.space_dashboard_rounded, 'لوحة القيادة',
+              group: 'الرئيسية'),
+          page: () => _overview(top, teaches)
+        ),
+        (
+          item: const KNavItem(Icons.insights_rounded, 'المؤشرات الحية'),
+          page: () => const DashboardScreen()
+        ),
+        (
+          item: const KNavItem(Icons.upload_file_rounded, 'رفع Excel',
+              group: 'البيانات'),
+          page: () => const ImportScreen()
+        ),
+        (
+          item: const KNavItem(Icons.grading_rounded, 'نتائج الطلبة'),
+          page: () => ResultsUploadScreen(myCourses: <Course>[])
+        ),
+        if (top)
+          (
+            item: const KNavItem(Icons.account_balance_rounded,
+                'الكليات والأقسام',
+                group: 'الهيكل'),
+            page: () => const StructureScreen()
+          ),
+        (
+          item: KNavItem(Icons.auto_stories_rounded, 'المواد الدراسية',
+              group: top ? null : 'الهيكل'),
+          page: () => const CoursesScreen()
+        ),
+        (
+          item: const KNavItem(Icons.school_rounded, 'الطلاب'),
+          page: () => const StudentsScreen()
+        ),
+        (
+          item: const KNavItem(Icons.badge_rounded, 'الكادر'),
+          page: () => const StaffScreen()
+        ),
+        (
+          item: const KNavItem(Icons.bar_chart_rounded, 'تقارير الحضور',
+              group: 'المتابعة'),
+          page: () => const ReportsScreen()
+        ),
+        if (teaches)
+          (
+            item: const KNavItem(Icons.qr_code_scanner_rounded, 'محاضراتي'),
+            page: () => const DoctorHome(embedded: true)
+          ),
+        if (top)
+          (
+            item: const KNavItem(Icons.tune_rounded, 'الإعدادات',
+                group: 'النظام'),
+            page: () => SettingsScreen(onSeed: _seed)
+          ),
+      ];
+
+  void _go(String label) {
+    final user = AppState.user.value!;
+    final pages = _pages(_isTop(user), _teaches(user));
+    final i = pages.indexWhere((p) => p.item.label == label);
+    if (i >= 0) setState(() => _sel = i);
   }
+
+  bool _isTop(AppUser u) => u.role == Role.admin || u.role == Role.president;
+  bool _teaches(AppUser u) =>
+      (u.role == Role.head || u.role == Role.dean) &&
+      u.staff!.courseIds.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
     final user = AppState.user.value!;
+    final pages = _pages(_isTop(user), _teaches(user));
+    final sel = _sel.clamp(0, pages.length - 1);
+    return KShell(
+      roleTitle: user.name,
+      roleSubtitle: roleName(user.staff!.role),
+      items: [for (final p in pages) p.item],
+      selected: sel,
+      onSelect: (i) {
+        setState(() => _sel = i);
+        if (i == 0) _load();
+      },
+      child: KSection(key: ValueKey(sel), builder: (_) => pages[sel].page()),
+    );
+  }
+
+  Widget _overview(bool top, bool teaches) {
+    final user = AppState.user.value!;
     final p = AppColors.tilePalette;
     final role = user.role;
-    final top = role == Role.admin || role == Role.president;
-    final teaches = (role == Role.head || role == Role.dean) &&
-        user.staff!.courseIds.isNotEmpty;
-    return ConstellationBackground(
-      child: Scaffold(
+    Widget tile(String t, String s, IconData i, Gradient g, String go) =>
+        ActionTile(title: t, subtitle: s, icon: i, gradient: g, onTap: () => _go(go));
+    return Scaffold(
       backgroundColor: Colors.transparent,
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(
-          padding: EdgeInsets.zero,
+          padding: const EdgeInsets.only(bottom: 24),
           children: [
             GradientHeader(
-              title: user.name,
+              title: 'مرحباً، ${user.name}',
               subtitle:
                   '${roleName(user.staff!.role)} • ${termName(AppState.settings.currentTerm)}',
               roleIcon: switch (role) {
@@ -145,31 +226,31 @@ class _AdminHomeState extends State<AdminHome> {
                 Role.head => Icons.apartment_rounded,
                 _ => Icons.admin_panel_settings,
               },
-              actions: [
-                IconButton(
-                  onPressed: () => showProfileSheet(context),
-                  icon: const Icon(Icons.account_circle_outlined,
-                      color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () => logout(context),
-                  icon: const Icon(Icons.logout, color: Colors.white),
-                ),
+              chips: [
+                'STUDENTS · ${_loading ? '…' : _students}',
+                'COURSES · ${_loading ? '…' : _courses}',
+                'TODAY · ${_loading ? '…' : _today}',
+                repo.isDemo ? 'LOCAL' : 'FIREBASE · ONLINE',
               ],
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  const KSectionHeader(
+                      tag: '01. OVERVIEW',
+                      title: 'نظرة عامة',
+                      subtitle: 'أرقام سريعة ضمن صلاحياتك'),
                   if (!_loading && !_seeded && top) _seedCard(),
                   GridView(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 280, mainAxisExtent: 80,
-                      mainAxisSpacing: 12, crossAxisSpacing: 12),
+                        maxCrossAxisExtent: 230,
+                        mainAxisExtent: 70,
+                        mainAxisSpacing: 10,
+                        crossAxisSpacing: 10),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    
                     children: [
                       StatCard(
                           label: 'الطلاب',
@@ -182,10 +263,15 @@ class _AdminHomeState extends State<AdminHome> {
                           icon: Icons.co_present_rounded,
                           gradient: p[1]),
                       StatCard(
-                          label: 'المواد / الأقسام',
-                          value: _loading ? '…' : '$_courses / $_depts',
+                          label: 'المواد',
+                          value: _loading ? '…' : '$_courses',
                           icon: Icons.menu_book_rounded,
                           gradient: p[2]),
+                      StatCard(
+                          label: 'الأقسام',
+                          value: _loading ? '…' : '$_depts',
+                          icon: Icons.apartment_rounded,
+                          gradient: p[6]),
                       StatCard(
                           label: 'محاضرات اليوم',
                           value: _loading ? '…' : '$_today',
@@ -193,82 +279,44 @@ class _AdminHomeState extends State<AdminHome> {
                           gradient: p[3]),
                     ],
                   ),
-                  const SectionTitle('الإدارة'),
+                  const KSectionHeader(
+                      tag: '02. QUICK ACCESS',
+                      title: 'الوصول السريع',
+                      subtitle: 'كل الأدوات متاحة أيضاً من القائمة الجانبية'),
                   GridView(
                     gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 130, mainAxisExtent: 150,
-                      mainAxisSpacing: 12, crossAxisSpacing: 12),
+                        maxCrossAxisExtent: 300,
+                        mainAxisExtent: 58,
+                        mainAxisSpacing: 8,
+                        crossAxisSpacing: 8),
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    
                     children: [
-                      ActionTile(
-                          title: 'المؤشرات',
-                          subtitle: 'لوحة حية',
-                          icon: Icons.dashboard_rounded,
-                          gradient: p[7],
-                          onTap: () => _open(const DashboardScreen())),
-                      ActionTile(
-                          title: 'رفع Excel',
-                          subtitle: 'إدخال البيانات',
-                          icon: Icons.upload_file_rounded,
-                          gradient: p[3],
-                          onTap: () => _open(const ImportScreen())),
-                      ActionTile(
-                          title: 'نتائج الطلبة',
-                          subtitle: 'رفع ومزامنة',
-                          icon: Icons.grading_rounded,
-                          gradient: p[4],
-                          onTap: () => _open(
-                              ResultsUploadScreen(myCourses: <Course>[]))),
+                      tile('رفع Excel', 'طلاب • مواد • كادر',
+                          Icons.upload_file_rounded, p[3], 'رفع Excel'),
+                      tile('نتائج الطلبة', 'رفع ومزامنة الدرجات',
+                          Icons.grading_rounded, p[4], 'نتائج الطلبة'),
+                      tile('الطلاب', 'إضافة • حذف • بطاقات NFC',
+                          Icons.school_rounded, p[0], 'الطلاب'),
+                      tile('الكادر', 'التدريسيون والإداريون',
+                          Icons.badge_rounded, p[1], 'الكادر'),
+                      tile('المواد الدراسية', 'حسب القسم والمرحلة',
+                          Icons.auto_stories_rounded, p[2], 'المواد الدراسية'),
+                      tile('تقارير الحضور', 'الحضور والغياب والإنذارات',
+                          Icons.bar_chart_rounded, p[5], 'تقارير الحضور'),
                       if (top)
-                        ActionTile(
-                            title: 'الكليات',
-                            subtitle: 'والأقسام',
-                            icon: Icons.account_balance_rounded,
-                            gradient: p[6],
-                            onTap: () => _open(const StructureScreen())),
-                      ActionTile(
-                          title: 'المواد',
-                          subtitle: 'الدراسية',
-                          icon: Icons.auto_stories_rounded,
-                          gradient: p[2],
-                          onTap: () => _open(const CoursesScreen())),
-                      ActionTile(
-                          title: 'الطلاب',
-                          subtitle: 'والأقسام',
-                          icon: Icons.school_rounded,
-                          gradient: p[0],
-                          onTap: () => _open(const StudentsScreen())),
-                      ActionTile(
-                          title: 'الكادر',
-                          subtitle: 'الهيئة التدريسية',
-                          icon: Icons.badge_rounded,
-                          gradient: p[1],
-                          onTap: () => _open(const StaffScreen())),
-                      ActionTile(
-                          title: 'التقارير',
-                          subtitle: 'الحضور والغياب',
-                          icon: Icons.insights_rounded,
-                          gradient: p[4],
-                          onTap: () => _open(const ReportsScreen())),
+                        tile('الكليات والأقسام', 'استحداث وتعديل',
+                            Icons.account_balance_rounded, p[6],
+                            'الكليات والأقسام'),
                       if (teaches)
-                        ActionTile(
-                            title: 'محاضراتي',
-                            subtitle: 'تسجيل الحضور',
-                            icon: Icons.qr_code_scanner_rounded,
-                            gradient: p[5],
-                            onTap: () => _open(const DoctorHome(embedded: true))),
-                      if (top)
-                        ActionTile(
-                            title: 'الإعدادات',
-                            subtitle: 'الفصل والنسب',
-                            icon: Icons.tune_rounded,
-                            gradient: p[5],
-                            onTap: () => _open(SettingsScreen(onSeed: _seed))),
+                        tile('محاضراتي', 'تسجيل الحضور',
+                            Icons.qr_code_scanner_rounded, p[5], 'محاضراتي'),
                     ],
                   ),
-                  const SectionTitle('آخر المحاضرات'),
+                  const KSectionHeader(
+                      tag: '03. RECENT',
+                      title: 'آخر المحاضرات',
+                      subtitle: 'أحدث جلسات الحضور المسجلة'),
                   if (_loading)
                     const Center(
                         child: Padding(
@@ -280,7 +328,7 @@ class _AdminHomeState extends State<AdminHome> {
                         text: 'لم تُسجّل أي محاضرة بعد')
                   else
                     ..._recent.take(10).map((s) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.only(bottom: 8),
                           child: _SessionTile(s),
                         )),
                 ],
@@ -289,7 +337,7 @@ class _AdminHomeState extends State<AdminHome> {
           ],
         ),
       ),
-    ));
+    );
   }
 
   Widget _seedCard() {
@@ -332,23 +380,25 @@ class _SessionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
-          color: AppColors.card, borderRadius: BorderRadius.circular(18)),
+          color: AppColors.card.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.lineSoft)),
       child: Row(
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
               gradient: s.active
                   ? AppColors.grad(AppColors.emerald, const Color(0xFF059669))
                   : AppColors.grad(
                       const Color(0xFF94A3B8), const Color(0xFF64748B)),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(s.active ? Icons.sensors : Icons.check_rounded,
-                color: Colors.white),
+                color: Colors.white, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(

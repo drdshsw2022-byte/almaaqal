@@ -46,7 +46,7 @@ class AlmaqalApp extends StatelessWidget {
       builder: (context, child) => ConstellationBackground(
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1100),
+            constraints: const BoxConstraints(maxWidth: 1600),
             child: child,
           ),
         ),
