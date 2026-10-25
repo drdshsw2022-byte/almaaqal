@@ -144,30 +144,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Colors.white.withOpacity(0.8), fontSize: 14)),
-                const SizedBox(height: 12),
-                Center(
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF59E0B).withOpacity(0.10),
-                      borderRadius: BorderRadius.circular(30),
-                      border: Border.all(color: AppColors.line),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.circle, size: 8, color: AppColors.emerald),
-                        SizedBox(width: 6),
-                        Text('كلية الهندسة · قسم هندسة الأمن السيبراني',
-                            style: TextStyle(
-                                color: AppColors.gold,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                ),
                 const SizedBox(height: 24),
                 _card(),
                 if (repo.isDemo) ...[
