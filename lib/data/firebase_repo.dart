@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config.dart';
 import '../models.dart';
@@ -38,6 +39,29 @@ class FirebaseRepo implements Repo {
 
   @override
   bool get isDemo => false;
+
+  /// توفير قراءات Firestore (حد الخطة المجانية 50 ألف قراءة يومياً):
+  /// القوائم الكبيرة (الطلبة، المواد، الكادر) تُقرأ من ذاكرة الجهاز إن كانت حديثة،
+  /// ومن السيرفر مرة كل [ttl] فقط. تعديلات المستخدم نفسه تظهر فوراً لأنها تُحفظ في الذاكرة المحلية أيضاً.
+  /// المفتاح مرتبط بحساب المستخدم حتى لا تُعرض بيانات حمّلها حساب آخر على الجهاز نفسه.
+  Future<QuerySnapshot<Map<String, dynamic>>> _cachedGet(
+      Query<Map<String, dynamic>> q, String key, Duration ttl) async {
+    final k = 'fsref_${_auth.currentUser?.uid ?? 'x'}_$key';
+    SharedPreferences? p;
+    try {
+      p = await SharedPreferences.getInstance();
+      final at = p.getInt(k) ?? 0;
+      if (DateTime.now().millisecondsSinceEpoch - at < ttl.inMilliseconds) {
+        final c = await q.get(const GetOptions(source: Source.cache));
+        if (c.docs.isNotEmpty) return c;
+      }
+    } catch (_) {}
+    final r = await q.get(const GetOptions(source: Source.server));
+    try {
+      await p?.setInt(k, DateTime.now().millisecondsSinceEpoch);
+    } catch (_) {}
+    return r;
+  }
 
   CollectionReference<Map<String, dynamic>> get _students =>
       _db.collection('students');
@@ -459,7 +483,7 @@ class FirebaseRepo implements Repo {
   Future<List<Course>> courses() async {
     final cached = _coursesCache;
     if (cached != null) return cached;
-    final q = await _courses.get();
+    final q = await _cachedGet(_courses, 'courses', const Duration(hours: 3));
     return _coursesCache = q.docs.map((d) => Course.fromMap(d.data())).toList();
   }
 
@@ -480,7 +504,7 @@ class FirebaseRepo implements Repo {
   Future<List<Student>> students() async {
     final cached = _studentsCache;
     if (cached != null) return cached;
-    final q = await _students.get();
+    final q = await _cachedGet(_students, 'students', const Duration(hours: 3));
     return _studentsCache =
         q.docs.map((d) => Student.fromMap(d.data())).toList();
   }
@@ -546,7 +570,7 @@ class FirebaseRepo implements Repo {
   // ---------------- الكادر ----------------
   @override
   Future<List<Staff>> staff() async {
-    final q = await _staff.get();
+    final q = await _cachedGet(_staff, 'staff', const Duration(hours: 1));
     return q.docs.map((d) => Staff.fromMap(d.data())).toList();
   }
 

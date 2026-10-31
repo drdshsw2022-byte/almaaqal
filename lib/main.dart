@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -86,6 +87,13 @@ class _BootScreenState extends State<BootScreen> {
                 : null,
           ),
         );
+        // ذاكرة محلية دائمة (مفعّلة افتراضياً على أندرويد وآيفون، ونفعّلها للويب)
+        // تقلل قراءات Firestore: القوائم الكبيرة تُقرأ من الجهاز ما دامت حديثة
+        try {
+          FirebaseFirestore.instance.settings = const Settings(
+              persistenceEnabled: true,
+              cacheSizeBytes: 100 * 1024 * 1024);
+        } catch (_) {}
         AppState.repo = FirebaseRepo();
       } else {
         final local = LocalRepo();
