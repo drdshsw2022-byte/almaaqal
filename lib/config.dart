@@ -13,7 +13,7 @@ class AppConfig {
   static const universityDomain = 'almaaqal.edu.iq';
 
   /// حسابات تملك صلاحية المدير العام دائماً (حتى من خارج نطاق الجامعة).
-  static const superAdminEmails = <String>['drdsh.sw2022@gmail.com'];
+  static const superAdminEmails = <String>['drdsh.sw2022@gmail.com', 'it.basra@gmail.com'];
 
   // ---------------- الدخول بكلمة المرور ----------------
   /// حساب مدير النظام الأول (يُطلب تغيير كلمة مروره عند أول دخول).
